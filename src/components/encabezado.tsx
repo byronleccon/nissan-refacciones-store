@@ -25,6 +25,12 @@ export async function Encabezado() {
                         </Link>
                     )}
 
+                    {(perfil?.rol === "admin_sucursal" || perfil?.rol === "admin_general") && (
+                        <Link href="/sucursal" className="hover:underline">
+                            Sucursal
+                        </Link>
+                    )}
+
                     <Link href="/catalogo" aria-label="Carrito" className="hover:opacity-80">
                         <ShoppingCart className="size-5" />
                     </Link>
