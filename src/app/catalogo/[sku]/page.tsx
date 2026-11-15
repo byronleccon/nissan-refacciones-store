@@ -14,7 +14,9 @@ export default async function DetalleProductoPage({ params }: Props) {
 
     const { data: producto } = await supabase
         .from("productos")
-        .select("sku, nombre, descripcion, precio, urls_imagenes, categorias(nombre)")
+        .select(
+            "sku, nombre, descripcion, precio, urls_imagenes, categorias(nombre), compatibilidades(vehiculos(modelo, anio, version, motor))",
+        )
         .eq("sku", decodeURIComponent(sku))
         .eq("publicado", true)
         .maybeSingle();
@@ -53,6 +55,22 @@ export default async function DetalleProductoPage({ params }: Props) {
             </p>
 
             {producto.descripcion && <p className="mt-4">{producto.descripcion}</p>}
+            {producto.compatibilidades && producto.compatibilidades.length > 0 && (
+                <section className="mt-6">
+                    <h2 className="text-lg font-semibold">Compatible con</h2>
+                    <ul className="mt-2 list-disc pl-5 text-sm">
+                        {producto.compatibilidades.map((c, i) => {
+                            const v = Array.isArray(c.vehiculos) ? c.vehiculos[0] : c.vehiculos;
+                            if (!v) return null;
+                            return (
+                                <li key={i}>
+                                    {v.modelo} {v.anio} · {v.version} · {v.motor}
+                                </li>
+                            );
+                        })}
+                    </ul>
+                </section>
+            )}
         </main>
     );
 }
