@@ -1,45 +1,20 @@
-import { cerrarSesion } from "@/app/auth/acciones";
-import { Button } from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/server";
-import { ShoppingCart } from "lucide-react";
 import Link from "next/link";
 
-export default async function Home() {
-    const supabase = await createClient();
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
-
+export default function Home() {
     return (
-        <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-red-700 p-4">
-            <h1 className="text-4xl font-bold text-white">Tienda de Refacciones Nissan</h1>
-
-            <Button variant="secondary" asChild>
-                <Link href="/catalogo">
-                    <ShoppingCart />
+        <main className="mx-auto max-w-6xl p-6">
+            <section className="rounded-lg bg-marca p-10 text-white">
+                <h1 className="text-4xl font-bold">Refacciones Nissan</h1>
+                <p className="mt-3 max-w-xl">
+                    Aparta tus refacciones en línea y recógelas en la sucursal que prefieras. Pagas al recoger.
+                </p>
+                <Link
+                    href="/catalogo"
+                    className="mt-6 inline-block rounded-md bg-white px-5 py-2 font-medium text-marca"
+                >
                     Ver catálogo
                 </Link>
-            </Button>
-
-            {user ? (
-                <div className="flex flex-col items-center gap-3 text-white">
-                    <p>Sesión iniciada como {user.email}</p>
-                    <form action={cerrarSesion}>
-                        <Button type="submit" variant="secondary">
-                            Cerrar sesión
-                        </Button>
-                    </form>
-                </div>
-            ) : (
-                <div className="flex gap-3">
-                    <Button variant="secondary" asChild>
-                        <Link href="/login">Iniciar sesión</Link>
-                    </Button>
-                    <Button variant="secondary" asChild>
-                        <Link href="/registro">Crear cuenta</Link>
-                    </Button>
-                </div>
-            )}
+            </section>
         </main>
     );
 }
