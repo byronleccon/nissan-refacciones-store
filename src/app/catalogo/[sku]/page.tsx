@@ -15,7 +15,7 @@ export default async function DetalleProductoPage({ params }: Props) {
     const { data: producto } = await supabase
         .from("productos")
         .select(
-            "sku, nombre, descripcion, precio, urls_imagenes, categorias(nombre), compatibilidades(vehiculos(modelo, anio, version, motor))",
+            "sku, nombre, descripcion, precio, urls_imagenes, categorias(nombre), compatibilidades(vehiculos(modelo, anio, version, motor)), inventario_sucursal(stock_fisico, stock_reservado, sucursales(nombre, activa))",
         )
         .eq("sku", decodeURIComponent(sku))
         .eq("publicado", true)
@@ -71,6 +71,27 @@ export default async function DetalleProductoPage({ params }: Props) {
                     </ul>
                 </section>
             )}
+            <section className="mt-6">
+                <h2 className="text-lg font-semibold">Disponibilidad por sucursal</h2>
+                <ul className="mt-2 space-y-1 text-sm">
+                    {producto.inventario_sucursal
+                        ?.map(i => {
+                            const suc = Array.isArray(i.sucursales) ? i.sucursales[0] : i.sucursales;
+                            return { suc, disponible: i.stock_fisico - i.stock_reservado };
+                        })
+                        .filter(x => x.suc?.activa)
+                        .map((x, idx) => (
+                            <li key={idx}>
+                                {x.suc?.nombre}:{" "}
+                                {x.disponible > 0 ? (
+                                    <span className="text-green-700">{x.disponible} disponibles</span>
+                                ) : (
+                                    <span className="text-red-600">Agotado</span>
+                                )}
+                            </li>
+                        ))}
+                </ul>
+            </section>
         </main>
     );
 }
