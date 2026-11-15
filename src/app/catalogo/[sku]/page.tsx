@@ -1,3 +1,5 @@
+import { agregarAlCarrito } from "@/app/carrito/acciones";
+import { Button } from "@/components/ui/button";
 import { urlFotoProducto } from "@/lib/storage";
 import { createClient } from "@/lib/supabase/server";
 import Image from "next/image";
@@ -15,7 +17,7 @@ export default async function DetalleProductoPage({ params }: Props) {
     const { data: producto } = await supabase
         .from("productos")
         .select(
-            "sku, nombre, descripcion, precio, urls_imagenes, categorias(nombre), compatibilidades(vehiculos(modelo, anio, version, motor)), inventario_sucursal(stock_fisico, stock_reservado, sucursales(nombre, activa))",
+            "id, sku, nombre, descripcion, precio, urls_imagenes, categorias(nombre), compatibilidades(vehiculos(modelo, anio, version, motor)), inventario_sucursal(stock_fisico, stock_reservado, sucursales(nombre, activa))",
         )
         .eq("sku", decodeURIComponent(sku))
         .eq("publicado", true)
@@ -54,7 +56,21 @@ export default async function DetalleProductoPage({ params }: Props) {
                 })}
             </p>
 
+            <form action={agregarAlCarrito} className="mt-4 flex items-center gap-2">
+                <input type="hidden" name="producto_id" value={producto.id} />
+                <input
+                    name="cantidad"
+                    type="number"
+                    min={1}
+                    max={99}
+                    defaultValue={1}
+                    className="w-20 rounded-md border px-2 py-2 text-sm"
+                />
+                <Button type="submit">Añadir al carrito</Button>
+            </form>
+
             {producto.descripcion && <p className="mt-4">{producto.descripcion}</p>}
+
             {producto.compatibilidades && producto.compatibilidades.length > 0 && (
                 <section className="mt-6">
                     <h2 className="text-lg font-semibold">Compatible con</h2>
@@ -71,6 +87,7 @@ export default async function DetalleProductoPage({ params }: Props) {
                     </ul>
                 </section>
             )}
+
             <section className="mt-6">
                 <h2 className="text-lg font-semibold">Disponibilidad por sucursal</h2>
                 <ul className="mt-2 space-y-1 text-sm">

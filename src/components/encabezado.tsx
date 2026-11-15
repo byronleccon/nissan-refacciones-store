@@ -1,11 +1,19 @@
 import { cerrarSesion } from "@/app/auth/acciones";
 import { Button } from "@/components/ui/button";
 import { obtenerPerfilActual } from "@/lib/auth/perfil";
+import { createClient } from "@/lib/supabase/server";
 import { ShoppingCart } from "lucide-react";
 import Link from "next/link";
 
 export async function Encabezado() {
     const perfil = await obtenerPerfilActual();
+
+    let cantidadCarrito = 0;
+    if (perfil) {
+        const supabase = await createClient();
+        const { data } = await supabase.from("carrito_items").select("cantidad").eq("usuario_id", perfil.id);
+        cantidadCarrito = data?.reduce((s, i) => s + i.cantidad, 0) ?? 0;
+    }
 
     return (
         <header className="bg-marca text-white">
@@ -31,8 +39,13 @@ export async function Encabezado() {
                         </Link>
                     )}
 
-                    <Link href="/catalogo" aria-label="Carrito" className="hover:opacity-80">
+                    <Link href="/carrito" aria-label="Carrito" className="relative hover:opacity-80">
                         <ShoppingCart className="size-5" />
+                        {cantidadCarrito > 0 && (
+                            <span className="absolute -right-2 -top-2 rounded-full bg-white px-1.5 text-xs font-bold text-marca">
+                                {cantidadCarrito}
+                            </span>
+                        )}
                     </Link>
 
                     {perfil ? (
