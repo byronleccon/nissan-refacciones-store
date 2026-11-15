@@ -1,4 +1,6 @@
+import { urlFotoProducto } from "@/lib/storage";
 import { createClient } from "@/lib/supabase/server";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -12,7 +14,7 @@ export default async function DetalleProductoPage({ params }: Props) {
 
     const { data: producto } = await supabase
         .from("productos")
-        .select("sku, nombre, descripcion, precio, categorias(nombre)")
+        .select("sku, nombre, descripcion, precio, urls_imagenes, categorias(nombre)")
         .eq("sku", decodeURIComponent(sku))
         .eq("publicado", true)
         .maybeSingle();
@@ -26,6 +28,18 @@ export default async function DetalleProductoPage({ params }: Props) {
             <Link href="/catalogo" className="text-sm underline">
                 ← Volver al catálogo
             </Link>
+
+            {producto.urls_imagenes?.[0] && (
+                <div className="relative mt-4 aspect-square w-full max-w-md overflow-hidden rounded-lg bg-gray-100">
+                    <Image
+                        src={urlFotoProducto(producto.urls_imagenes[0])}
+                        alt={producto.nombre}
+                        fill
+                        sizes="(max-width: 768px) 100vw, 448px"
+                        className="object-cover"
+                    />
+                </div>
+            )}
 
             <h1 className="mt-4 text-3xl font-bold">{producto.nombre}</h1>
             <p className="mt-1 text-sm text-gray-600">SKU: {producto.sku}</p>

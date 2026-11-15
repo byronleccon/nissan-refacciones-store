@@ -1,7 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
-
 type Props = {
     searchParams: Promise<{ q?: string; categoria?: string }>;
 };
@@ -14,7 +13,7 @@ export default async function CatalogoPage({ searchParams }: Props) {
 
     let consulta = supabase
         .from("productos")
-        .select("id, sku, nombre, precio, categorias(nombre, slug)")
+        .select("id, sku, nombre, precio,urls_imagenes, categorias(nombre, slug)")
         .eq("publicado", true)
         .order("nombre");
 
