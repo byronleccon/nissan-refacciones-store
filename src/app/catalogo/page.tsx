@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
+import Link from "next/link";
 
 type Props = {
     searchParams: Promise<{ q?: string; categoria?: string }>;
@@ -68,20 +69,22 @@ export default async function CatalogoPage({ searchParams }: Props) {
 
             <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {productos?.map(p => (
-                    <Card key={p.id}>
-                        <CardHeader>
-                            <CardTitle className="text-base">{p.nombre}</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm text-gray-600">SKU: {p.sku}</p>
-                            <p className="mt-2 text-xl font-bold">
-                                {Number(p.precio).toLocaleString("es-MX", {
-                                    style: "currency",
-                                    currency: "MXN",
-                                })}
-                            </p>
-                        </CardContent>
-                    </Card>
+                    <Link key={p.id} href={`/catalogo/${encodeURIComponent(p.sku)}`}>
+                        <Card className="h-full transition hover:shadow-md">
+                            <CardHeader>
+                                <CardTitle className="text-base">{p.nombre}</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-sm text-gray-600">SKU: {p.sku}</p>
+                                <p className="mt-2 text-xl font-bold">
+                                    {Number(p.precio).toLocaleString("es-MX", {
+                                        style: "currency",
+                                        currency: "MXN",
+                                    })}
+                                </p>
+                            </CardContent>
+                        </Card>
+                    </Link>
                 ))}
             </div>
 
