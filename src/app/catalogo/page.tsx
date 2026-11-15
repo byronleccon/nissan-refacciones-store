@@ -104,6 +104,7 @@ export default async function CatalogoPage({ searchParams }: Props) {
     }
 
     const { data: productos, error } = await consulta;
+    if (error) console.error("ERROR CATALOGO:", error.message);
 
     // Conserva el texto y la categoría al cambiar el vehículo
     const claseSelect = "rounded-md border px-3 py-2 text-sm";
