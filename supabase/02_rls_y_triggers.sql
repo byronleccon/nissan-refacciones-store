@@ -29,8 +29,8 @@ $$;
 -- Solo usuarios con sesión pueden usarlas
 revoke execute on function public.rol_actual() from public, anon;
 revoke execute on function public.sucursal_actual() from public, anon;
-grant execute on function public.rol_actual() to authenticated;
-grant execute on function public.sucursal_actual() to authenticated;
+grant execute on function public.rol_actual() to anon, authenticated;
+grant execute on function public.sucursal_actual() to anon, authenticated;
 
 -- ===== 2. ACTIVAR RLS =====
 
