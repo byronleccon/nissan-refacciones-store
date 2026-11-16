@@ -17,12 +17,24 @@ export default async function AdminPage() {
             </p>
 
             <section className="mt-8 grid gap-5 sm:grid-cols-2">
+                {/* Gestión de pedidos */}
                 <Link href="/admin/pedidos" className="rounded-xl border p-6 transition-colors hover:bg-muted">
                     <h2 className="text-xl font-semibold">Gestión de pedidos</h2>
 
                     <p className="mt-2 text-sm text-muted-foreground">Consulta los pedidos y revisa su estado.</p>
 
                     <span className="mt-4 inline-block text-sm font-medium text-primary">Ver pedidos →</span>
+                </Link>
+
+                {/* Gestión de usuarios */}
+                <Link href="/admin/usuarios" className="rounded-xl border p-6 transition-colors hover:bg-muted">
+                    <h2 className="text-xl font-semibold">Gestión de usuarios</h2>
+
+                    <p className="mt-2 text-sm text-muted-foreground">
+                        Crea administradores y empleados, y asigna sus sucursales.
+                    </p>
+
+                    <span className="mt-4 inline-block text-sm font-medium text-primary">Administrar usuarios →</span>
                 </Link>
             </section>
         </main>
