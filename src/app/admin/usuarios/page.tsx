@@ -36,7 +36,7 @@ export default async function UsuariosPage({
         estado?: string;
     }>;
 }) {
-    const perfil = await exigirRol(["admin_general", "admin_sucursal"]);
+    const perfil = await exigirRol(["admin_general"]);
 
     const supabase = await createClient();
     const admin = createAdminClient();

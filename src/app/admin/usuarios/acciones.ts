@@ -18,6 +18,11 @@ const esquemaId = z.object({
     usuario_id: z.string().uuid(),
 });
 
+// Determina la ruta de gestión según el administrador.
+function obtenerRutaGestion(rol: string) {
+    return rol === "admin_sucursal" ? "/admin/empleados" : "/admin/usuarios";
+}
+
 // Obtiene y valida al administrador que realiza la operación.
 async function obtenerContextoGestion() {
     const supabase = await createClient();
@@ -39,7 +44,7 @@ async function obtenerContextoGestion() {
         .maybeSingle();
 
     if (error || !actor || !actor.activo || !["admin_general", "admin_sucursal"].includes(actor.rol)) {
-        redirect("/admin/usuarios?error=permisos");
+        redirect("/admin?error=permisos");
     }
 
     return { admin, actor };
@@ -56,9 +61,11 @@ async function obtenerUsuarioGestionable(
     },
     usuarioId: string,
 ) {
+    const rutaGestion = obtenerRutaGestion(actor.rol);
+
     // Nadie puede gestionarse a sí mismo.
     if (actor.id === usuarioId) {
-        redirect("/admin/usuarios?error=propio");
+        redirect(`${rutaGestion}?error=propio`);
     }
 
     const { data: objetivo, error } = await admin
@@ -68,24 +75,25 @@ async function obtenerUsuarioGestionable(
         .maybeSingle();
 
     if (error || !objetivo) {
-        redirect("/admin/usuarios?error=usuario");
+        redirect(`${rutaGestion}?error=usuario`);
     }
 
     // No se permite gestionar cuentas de clientes.
     if (!["admin_general", "admin_sucursal", "empleado"].includes(objetivo.rol)) {
-        redirect("/admin/usuarios?error=objetivo");
+        redirect(`${rutaGestion}?error=objetivo`);
     }
 
     // El administrador de sucursal solo gestiona empleados propios.
     if (actor.rol === "admin_sucursal") {
         if (objetivo.rol !== "empleado" || !actor.sucursal_id || objetivo.sucursal_id !== actor.sucursal_id) {
-            redirect("/admin/usuarios?error=permisos");
+            redirect(`${rutaGestion}?error=permisos`);
         }
     }
 
     return objetivo;
 }
 
+// Crear usuarios.
 export async function crearUsuario(formData: FormData) {
     const supabase = await createClient();
 
@@ -106,9 +114,12 @@ export async function crearUsuario(formData: FormData) {
         .maybeSingle();
 
     if (errorPerfilActual || !perfil || !perfil.activo || !["admin_general", "admin_sucursal"].includes(perfil.rol)) {
-        redirect("/admin/usuarios?error=permisos");
+        redirect("/admin?error=permisos");
     }
 
+    const rutaGestion = obtenerRutaGestion(perfil.rol);
+
+    // Validar los datos recibidos.
     const validacion = esquemaUsuario.safeParse({
         nombre_completo: formData.get("nombre_completo"),
         email: formData.get("email"),
@@ -118,31 +129,34 @@ export async function crearUsuario(formData: FormData) {
     });
 
     if (!validacion.success) {
-        redirect("/admin/usuarios?error=datos");
+        redirect(`${rutaGestion}?error=datos`);
     }
 
     const datos = validacion.data;
 
+    // Validar jerarquía de permisos.
     if (perfil.rol === "admin_sucursal" && datos.rol !== "empleado") {
-        redirect("/admin/usuarios?error=rol");
+        redirect(`${rutaGestion}?error=rol`);
     }
 
+    // Determinar la sucursal que tendrá el nuevo usuario.
     let sucursalId: string | null = null;
 
     if (perfil.rol === "admin_sucursal") {
         sucursalId = perfil.sucursal_id;
 
         if (!sucursalId) {
-            redirect("/admin/usuarios?error=sucursal");
+            redirect(`${rutaGestion}?error=sucursal`);
         }
     } else if (datos.rol !== "admin_general") {
         sucursalId = datos.sucursal_id || null;
 
         if (!sucursalId) {
-            redirect("/admin/usuarios?error=sucursal");
+            redirect(`${rutaGestion}?error=sucursal`);
         }
     }
 
+    // Comprobar que la sucursal exista y esté activa.
     if (sucursalId) {
         const { data: sucursal, error: errorSucursal } = await admin
             .from("sucursales")
@@ -152,14 +166,15 @@ export async function crearUsuario(formData: FormData) {
             .maybeSingle();
 
         if (errorSucursal || !sucursal) {
-            redirect("/admin/usuarios?error=sucursal");
+            redirect(`${rutaGestion}?error=sucursal`);
         }
     }
 
+    // Crear cuenta en Supabase Auth.
     const { data: nuevoUsuario, error: errorAuth } = await admin.auth.admin.createUser({
         email: datos.email.toLowerCase(),
         password: datos.password,
-        email_confirm: false,
+        email_confirm: true,
         user_metadata: {
             nombre_completo: datos.nombre_completo,
         },
@@ -167,9 +182,12 @@ export async function crearUsuario(formData: FormData) {
 
     if (errorAuth || !nuevoUsuario.user) {
         console.error("Error al crear usuario:", errorAuth?.message);
-        redirect("/admin/usuarios?error=creacion");
+
+        redirect(`${rutaGestion}?error=creacion`);
     }
 
+    // El trigger ya creó el perfil.
+    // Actualizar nombre, rol y sucursal.
     const { error: errorActualizarPerfil } = await admin
         .from("perfiles")
         .update({
@@ -182,40 +200,44 @@ export async function crearUsuario(formData: FormData) {
     if (errorActualizarPerfil) {
         console.error("Error al actualizar perfil:", errorActualizarPerfil.message);
 
+        // Evitar dejar una cuenta creada con permisos incorrectos.
         const { error: errorEliminar } = await admin.auth.admin.deleteUser(nuevoUsuario.user.id);
 
         if (errorEliminar) {
             console.error("No se pudo eliminar la cuenta incompleta:", errorEliminar.message);
         }
 
-        redirect("/admin/usuarios?error=perfil");
+        redirect(`${rutaGestion}?error=perfil`);
     }
 
     revalidatePath("/admin");
     revalidatePath("/admin/usuarios");
+    revalidatePath("/admin/empleados");
 
-    redirect("/admin/usuarios?creado=1");
+    redirect(`${rutaGestion}?creado=1`);
 }
 
-// Desactiva el perfil y bloquea el inicio de sesión.
+// Desactivar usuario.
 export async function desactivarUsuario(formData: FormData) {
     const validacion = esquemaId.safeParse({
         usuario_id: formData.get("usuario_id"),
     });
 
     if (!validacion.success) {
-        redirect("/admin/usuarios?error=datos");
+        redirect("/admin?error=datos");
     }
 
     const { admin, actor } = await obtenerContextoGestion();
 
+    const rutaGestion = obtenerRutaGestion(actor.rol);
+
     const objetivo = await obtenerUsuarioGestionable(admin, actor, validacion.data.usuario_id);
 
     if (!objetivo.activo) {
-        redirect("/admin/usuarios?error=estado");
+        redirect(`${rutaGestion}?error=estado`);
     }
 
-    // Primero se bloquea el acceso a los datos de la aplicación.
+    // Primero bloquear el acceso a la aplicación.
     const { error: errorPerfil } = await admin
         .from("perfiles")
         .update({ activo: false })
@@ -224,58 +246,67 @@ export async function desactivarUsuario(formData: FormData) {
 
     if (errorPerfil) {
         console.error("Error al desactivar perfil:", errorPerfil.message);
-        redirect("/admin/usuarios?error=desactivacion");
+
+        redirect(`${rutaGestion}?error=desactivacion`);
     }
 
-    // Después se bloquea el inicio de sesión en Supabase Auth.
-    const { error: errorAuth } = await admin.auth.admin.updateUserById(objetivo.id, { ban_duration: "876000h" });
+    // Después bloquear el inicio de sesión en Supabase Auth.
+    const { error: errorAuth } = await admin.auth.admin.updateUserById(objetivo.id, {
+        ban_duration: "876000h",
+    });
 
     if (errorAuth) {
         console.error("Error al bloquear cuenta:", errorAuth.message);
 
-        // Intentar restaurar el perfil si Auth no pudo bloquear la cuenta.
+        // Intentar restaurar el perfil si Auth falla.
         const { error: errorRestaurar } = await admin.from("perfiles").update({ activo: true }).eq("id", objetivo.id);
 
         if (errorRestaurar) {
             console.error("No se pudo restaurar el perfil:", errorRestaurar.message);
         }
 
-        redirect("/admin/usuarios?error=desactivacion");
+        redirect(`${rutaGestion}?error=desactivacion`);
     }
 
     revalidatePath("/admin");
     revalidatePath("/admin/usuarios");
+    revalidatePath("/admin/empleados");
 
-    redirect("/admin/usuarios?desactivado=1");
+    redirect(`${rutaGestion}?desactivado=1`);
 }
 
-// Reactiva el inicio de sesión y el perfil.
+// Reactivar usuario.
 export async function reactivarUsuario(formData: FormData) {
     const validacion = esquemaId.safeParse({
         usuario_id: formData.get("usuario_id"),
     });
 
     if (!validacion.success) {
-        redirect("/admin/usuarios?error=datos");
+        redirect("/admin?error=datos");
     }
 
     const { admin, actor } = await obtenerContextoGestion();
 
+    const rutaGestion = obtenerRutaGestion(actor.rol);
+
     const objetivo = await obtenerUsuarioGestionable(admin, actor, validacion.data.usuario_id);
 
     if (objetivo.activo) {
-        redirect("/admin/usuarios?error=estado");
+        redirect(`${rutaGestion}?error=estado`);
     }
 
-    // Primero se quita el bloqueo de Auth.
-    const { error: errorAuth } = await admin.auth.admin.updateUserById(objetivo.id, { ban_duration: "none" });
+    // Primero quitar el bloqueo de Auth.
+    const { error: errorAuth } = await admin.auth.admin.updateUserById(objetivo.id, {
+        ban_duration: "none",
+    });
 
     if (errorAuth) {
         console.error("Error al desbloquear cuenta:", errorAuth.message);
-        redirect("/admin/usuarios?error=reactivacion");
+
+        redirect(`${rutaGestion}?error=reactivacion`);
     }
 
-    // Después se permite nuevamente el acceso a la aplicación.
+    // Después permitir nuevamente el acceso a la aplicación.
     const { error: errorPerfil } = await admin
         .from("perfiles")
         .update({ activo: true })
@@ -285,7 +316,7 @@ export async function reactivarUsuario(formData: FormData) {
     if (errorPerfil) {
         console.error("Error al reactivar perfil:", errorPerfil.message);
 
-        // Intentar volver a bloquear Auth si falla la actualización del perfil.
+        // Intentar volver a bloquear Auth si falla la actualización.
         const { error: errorBloqueo } = await admin.auth.admin.updateUserById(objetivo.id, {
             ban_duration: "876000h",
         });
@@ -294,11 +325,12 @@ export async function reactivarUsuario(formData: FormData) {
             console.error("No se pudo volver a bloquear la cuenta:", errorBloqueo.message);
         }
 
-        redirect("/admin/usuarios?error=reactivacion");
+        redirect(`${rutaGestion}?error=reactivacion`);
     }
 
     revalidatePath("/admin");
     revalidatePath("/admin/usuarios");
+    revalidatePath("/admin/empleados");
 
-    redirect("/admin/usuarios?reactivado=1");
+    redirect(`${rutaGestion}?reactivado=1`);
 }
