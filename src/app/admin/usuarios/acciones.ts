@@ -14,16 +14,23 @@ const esquemaUsuario = z.object({
     sucursal_id: z.union([z.string().uuid(), z.literal("")]),
 });
 
+const esquemaEditarUsuario = z.object({
+    usuario_id: z.string().uuid(),
+    nombre_completo: z.string().trim().min(2).max(100),
+    email: z.string().trim().email().max(254),
+    password: z.union([z.literal(""), z.string().min(8).max(72)]),
+    rol: z.enum(["admin_general", "admin_sucursal", "empleado"]),
+    sucursal_id: z.union([z.string().uuid(), z.literal("")]),
+});
+
 const esquemaId = z.object({
     usuario_id: z.string().uuid(),
 });
 
-// Determina la ruta de gestión según el administrador.
 function obtenerRutaGestion(rol: string) {
     return rol === "admin_sucursal" ? "/admin/empleados" : "/admin/usuarios";
 }
 
-// Obtiene y valida al administrador que realiza la operación.
 async function obtenerContextoGestion() {
     const supabase = await createClient();
 
@@ -31,9 +38,7 @@ async function obtenerContextoGestion() {
         data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user) {
-        redirect("/login");
-    }
+    if (!user) redirect("/login");
 
     const admin = createAdminClient();
 
@@ -50,7 +55,6 @@ async function obtenerContextoGestion() {
     return { admin, actor };
 }
 
-// Comprueba si el administrador puede gestionar al usuario objetivo.
 async function obtenerUsuarioGestionable(
     admin: ReturnType<typeof createAdminClient>,
     actor: {
@@ -63,14 +67,13 @@ async function obtenerUsuarioGestionable(
 ) {
     const rutaGestion = obtenerRutaGestion(actor.rol);
 
-    // Nadie puede gestionarse a sí mismo.
     if (actor.id === usuarioId) {
         redirect(`${rutaGestion}?error=propio`);
     }
 
     const { data: objetivo, error } = await admin
         .from("perfiles")
-        .select("id, rol, sucursal_id, activo")
+        .select("id, nombre_completo, rol, sucursal_id, activo")
         .eq("id", usuarioId)
         .maybeSingle();
 
@@ -78,12 +81,10 @@ async function obtenerUsuarioGestionable(
         redirect(`${rutaGestion}?error=usuario`);
     }
 
-    // No se permite gestionar cuentas de clientes.
     if (!["admin_general", "admin_sucursal", "empleado"].includes(objetivo.rol)) {
         redirect(`${rutaGestion}?error=objetivo`);
     }
 
-    // El administrador de sucursal solo gestiona empleados propios.
     if (actor.rol === "admin_sucursal") {
         if (objetivo.rol !== "empleado" || !actor.sucursal_id || objetivo.sucursal_id !== actor.sucursal_id) {
             redirect(`${rutaGestion}?error=permisos`);
@@ -95,31 +96,9 @@ async function obtenerUsuarioGestionable(
 
 // Crear usuarios.
 export async function crearUsuario(formData: FormData) {
-    const supabase = await createClient();
+    const { admin, actor } = await obtenerContextoGestion();
+    const rutaGestion = obtenerRutaGestion(actor.rol);
 
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-        redirect("/login");
-    }
-
-    const admin = createAdminClient();
-
-    const { data: perfil, error: errorPerfilActual } = await admin
-        .from("perfiles")
-        .select("id, rol, sucursal_id, activo")
-        .eq("id", user.id)
-        .maybeSingle();
-
-    if (errorPerfilActual || !perfil || !perfil.activo || !["admin_general", "admin_sucursal"].includes(perfil.rol)) {
-        redirect("/admin?error=permisos");
-    }
-
-    const rutaGestion = obtenerRutaGestion(perfil.rol);
-
-    // Validar los datos recibidos.
     const validacion = esquemaUsuario.safeParse({
         nombre_completo: formData.get("nombre_completo"),
         email: formData.get("email"),
@@ -134,16 +113,14 @@ export async function crearUsuario(formData: FormData) {
 
     const datos = validacion.data;
 
-    // Validar jerarquía de permisos.
-    if (perfil.rol === "admin_sucursal" && datos.rol !== "empleado") {
+    if (actor.rol === "admin_sucursal" && datos.rol !== "empleado") {
         redirect(`${rutaGestion}?error=rol`);
     }
 
-    // Determinar la sucursal que tendrá el nuevo usuario.
     let sucursalId: string | null = null;
 
-    if (perfil.rol === "admin_sucursal") {
-        sucursalId = perfil.sucursal_id;
+    if (actor.rol === "admin_sucursal") {
+        sucursalId = actor.sucursal_id;
 
         if (!sucursalId) {
             redirect(`${rutaGestion}?error=sucursal`);
@@ -156,21 +133,19 @@ export async function crearUsuario(formData: FormData) {
         }
     }
 
-    // Comprobar que la sucursal exista y esté activa.
     if (sucursalId) {
-        const { data: sucursal, error: errorSucursal } = await admin
+        const { data: sucursal, error } = await admin
             .from("sucursales")
             .select("id")
             .eq("id", sucursalId)
             .eq("activa", true)
             .maybeSingle();
 
-        if (errorSucursal || !sucursal) {
+        if (error || !sucursal) {
             redirect(`${rutaGestion}?error=sucursal`);
         }
     }
 
-    // Crear cuenta en Supabase Auth.
     const { data: nuevoUsuario, error: errorAuth } = await admin.auth.admin.createUser({
         email: datos.email.toLowerCase(),
         password: datos.password,
@@ -182,12 +157,9 @@ export async function crearUsuario(formData: FormData) {
 
     if (errorAuth || !nuevoUsuario.user) {
         console.error("Error al crear usuario:", errorAuth?.message);
-
         redirect(`${rutaGestion}?error=creacion`);
     }
 
-    // El trigger ya creó el perfil.
-    // Actualizar nombre, rol y sucursal.
     const { error: errorActualizarPerfil } = await admin
         .from("perfiles")
         .update({
@@ -200,7 +172,6 @@ export async function crearUsuario(formData: FormData) {
     if (errorActualizarPerfil) {
         console.error("Error al actualizar perfil:", errorActualizarPerfil.message);
 
-        // Evitar dejar una cuenta creada con permisos incorrectos.
         const { error: errorEliminar } = await admin.auth.admin.deleteUser(nuevoUsuario.user.id);
 
         if (errorEliminar) {
@@ -223,12 +194,9 @@ export async function desactivarUsuario(formData: FormData) {
         usuario_id: formData.get("usuario_id"),
     });
 
-    if (!validacion.success) {
-        redirect("/admin?error=datos");
-    }
+    if (!validacion.success) redirect("/admin?error=datos");
 
     const { admin, actor } = await obtenerContextoGestion();
-
     const rutaGestion = obtenerRutaGestion(actor.rol);
 
     const objetivo = await obtenerUsuarioGestionable(admin, actor, validacion.data.usuario_id);
@@ -237,7 +205,6 @@ export async function desactivarUsuario(formData: FormData) {
         redirect(`${rutaGestion}?error=estado`);
     }
 
-    // Primero bloquear el acceso a la aplicación.
     const { error: errorPerfil } = await admin
         .from("perfiles")
         .update({ activo: false })
@@ -246,11 +213,9 @@ export async function desactivarUsuario(formData: FormData) {
 
     if (errorPerfil) {
         console.error("Error al desactivar perfil:", errorPerfil.message);
-
         redirect(`${rutaGestion}?error=desactivacion`);
     }
 
-    // Después bloquear el inicio de sesión en Supabase Auth.
     const { error: errorAuth } = await admin.auth.admin.updateUserById(objetivo.id, {
         ban_duration: "876000h",
     });
@@ -258,7 +223,6 @@ export async function desactivarUsuario(formData: FormData) {
     if (errorAuth) {
         console.error("Error al bloquear cuenta:", errorAuth.message);
 
-        // Intentar restaurar el perfil si Auth falla.
         const { error: errorRestaurar } = await admin.from("perfiles").update({ activo: true }).eq("id", objetivo.id);
 
         if (errorRestaurar) {
@@ -281,12 +245,9 @@ export async function reactivarUsuario(formData: FormData) {
         usuario_id: formData.get("usuario_id"),
     });
 
-    if (!validacion.success) {
-        redirect("/admin?error=datos");
-    }
+    if (!validacion.success) redirect("/admin?error=datos");
 
     const { admin, actor } = await obtenerContextoGestion();
-
     const rutaGestion = obtenerRutaGestion(actor.rol);
 
     const objetivo = await obtenerUsuarioGestionable(admin, actor, validacion.data.usuario_id);
@@ -295,18 +256,15 @@ export async function reactivarUsuario(formData: FormData) {
         redirect(`${rutaGestion}?error=estado`);
     }
 
-    // Primero quitar el bloqueo de Auth.
     const { error: errorAuth } = await admin.auth.admin.updateUserById(objetivo.id, {
         ban_duration: "none",
     });
 
     if (errorAuth) {
         console.error("Error al desbloquear cuenta:", errorAuth.message);
-
         redirect(`${rutaGestion}?error=reactivacion`);
     }
 
-    // Después permitir nuevamente el acceso a la aplicación.
     const { error: errorPerfil } = await admin
         .from("perfiles")
         .update({ activo: true })
@@ -316,7 +274,6 @@ export async function reactivarUsuario(formData: FormData) {
     if (errorPerfil) {
         console.error("Error al reactivar perfil:", errorPerfil.message);
 
-        // Intentar volver a bloquear Auth si falla la actualización.
         const { error: errorBloqueo } = await admin.auth.admin.updateUserById(objetivo.id, {
             ban_duration: "876000h",
         });
@@ -333,4 +290,127 @@ export async function reactivarUsuario(formData: FormData) {
     revalidatePath("/admin/empleados");
 
     redirect(`${rutaGestion}?reactivado=1`);
+}
+
+// Editar datos y credenciales de un usuario.
+export async function actualizarUsuario(formData: FormData) {
+    const validacion = esquemaEditarUsuario.safeParse({
+        usuario_id: formData.get("usuario_id"),
+        nombre_completo: formData.get("nombre_completo"),
+        email: formData.get("email"),
+        password: formData.get("password") || "",
+        rol: formData.get("rol"),
+        sucursal_id: formData.get("sucursal_id") || "",
+    });
+
+    if (!validacion.success) {
+        redirect("/admin?error=datos");
+    }
+
+    const { admin, actor } = await obtenerContextoGestion();
+    const rutaGestion = obtenerRutaGestion(actor.rol);
+    const datos = validacion.data;
+
+    const objetivo = await obtenerUsuarioGestionable(admin, actor, datos.usuario_id);
+
+    if (!objetivo.activo) {
+        redirect(`${rutaGestion}?error=editar_inactivo`);
+    }
+
+    let nuevoRol = datos.rol;
+    let nuevaSucursal: string | null = datos.sucursal_id || null;
+
+    if (actor.rol === "admin_sucursal") {
+        if (objetivo.rol !== "empleado" || !actor.sucursal_id || objetivo.sucursal_id !== actor.sucursal_id) {
+            redirect(`${rutaGestion}?error=permisos`);
+        }
+
+        nuevoRol = "empleado";
+        nuevaSucursal = actor.sucursal_id;
+    } else {
+        if (nuevoRol !== "admin_general" && !nuevaSucursal) {
+            redirect(`${rutaGestion}?error=sucursal`);
+        }
+
+        if (nuevoRol === "admin_general") {
+            nuevaSucursal = null;
+        }
+    }
+
+    if (nuevaSucursal) {
+        const { data: sucursal, error } = await admin
+            .from("sucursales")
+            .select("id")
+            .eq("id", nuevaSucursal)
+            .eq("activa", true)
+            .maybeSingle();
+
+        if (error || !sucursal) {
+            redirect(`${rutaGestion}?error=sucursal`);
+        }
+    }
+
+    const { data: usuarioAuth, error: errorObtenerAuth } = await admin.auth.admin.getUserById(objetivo.id);
+
+    if (errorObtenerAuth || !usuarioAuth.user) {
+        console.error("Error al consultar cuenta Auth:", errorObtenerAuth?.message);
+        redirect(`${rutaGestion}?error=usuario`);
+    }
+
+    const perfilAnterior = {
+        nombre_completo: objetivo.nombre_completo,
+        rol: objetivo.rol,
+        sucursal_id: objetivo.sucursal_id,
+    };
+
+    const { error: errorPerfil } = await admin
+        .from("perfiles")
+        .update({
+            nombre_completo: datos.nombre_completo,
+            rol: nuevoRol,
+            sucursal_id: nuevaSucursal,
+        })
+        .eq("id", objetivo.id);
+
+    if (errorPerfil) {
+        console.error("Error al actualizar perfil:", errorPerfil.message);
+        redirect(`${rutaGestion}?error=edicion`);
+    }
+
+    const cambiosAuth: {
+        email: string;
+        email_confirm: boolean;
+        password?: string;
+        user_metadata: { nombre_completo: string };
+    } = {
+        email: datos.email.trim().toLowerCase(),
+        email_confirm: true,
+        user_metadata: {
+            nombre_completo: datos.nombre_completo,
+        },
+    };
+
+    if (datos.password !== "") {
+        cambiosAuth.password = datos.password;
+    }
+
+    const { error: errorAuth } = await admin.auth.admin.updateUserById(objetivo.id, cambiosAuth);
+
+    if (errorAuth) {
+        console.error("Error al actualizar cuenta Auth:", errorAuth.message);
+
+        const { error: errorRestaurar } = await admin.from("perfiles").update(perfilAnterior).eq("id", objetivo.id);
+
+        if (errorRestaurar) {
+            console.error("Error al restaurar perfil:", errorRestaurar.message);
+        }
+
+        redirect(`${rutaGestion}?error=credenciales`);
+    }
+
+    revalidatePath("/admin");
+    revalidatePath("/admin/usuarios");
+    revalidatePath("/admin/empleados");
+
+    redirect(`${rutaGestion}?editado=1`);
 }

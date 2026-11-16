@@ -32,6 +32,7 @@ export default async function UsuariosPage({
         creado?: string;
         desactivado?: string;
         reactivado?: string;
+        editado?: string;
         sucursal?: string;
         estado?: string;
     }>;
@@ -44,37 +45,30 @@ export default async function UsuariosPage({
     const params = await searchParams;
     const esAdminGeneral = perfil.rol === "admin_general";
 
-    // Consultar sucursales para mostrar sus nombres.
     const { data: sucursalesData } = await admin.from("sucursales").select("id, nombre").order("nombre");
 
     const sucursales = (sucursalesData ?? []) as Sucursal[];
 
     const nombresSucursales = new Map(sucursales.map(sucursal => [sucursal.id, sucursal.nombre]));
 
-    // Solo las sucursales activas pueden asignarse al crear usuarios.
     const { data: sucursalesActivas } = await supabase
         .from("sucursales")
         .select("id, nombre")
         .eq("activa", true)
         .order("nombre");
 
-    // Obtener filtros.
     const estado = ["todos", "activos", "inactivos"].includes(params.estado ?? "") ? params.estado! : "todos";
 
     const sucursalSeleccionada =
         esAdminGeneral && sucursales.some(s => s.id === params.sucursal) ? params.sucursal! : "";
 
-    // Consultar perfiles de trabajadores.
     let consulta = admin
         .from("perfiles")
         .select("id, nombre_completo, rol, sucursal_id, activo")
         .in("rol", ["admin_general", "admin_sucursal", "empleado"])
         .order("nombre_completo");
 
-    // El administrador de sucursal solo consulta empleados propios.
-    if (perfil.rol === "admin_sucursal") {
-        consulta = consulta.eq("rol", "empleado").eq("sucursal_id", perfil.sucursal_id ?? "");
-    } else if (sucursalSeleccionada) {
+    if (sucursalSeleccionada) {
         consulta = consulta.eq("sucursal_id", sucursalSeleccionada);
     }
 
@@ -86,7 +80,6 @@ export default async function UsuariosPage({
 
     const { data: perfiles, error: errorPerfiles } = await consulta;
 
-    // Obtener los correos desde Supabase Auth.
     const usuariosAuth: {
         id: string;
         email?: string;
@@ -114,9 +107,7 @@ export default async function UsuariosPage({
             })),
         );
 
-        if (data.users.length < 1000) {
-            break;
-        }
+        if (data.users.length < 1000) break;
 
         pagina++;
     }
@@ -139,12 +130,15 @@ export default async function UsuariosPage({
         sucursal: "Selecciona una sucursal válida y activa.",
         creacion: "No se pudo crear la cuenta. Comprueba que el correo no esté registrado.",
         perfil: "No se pudo configurar el perfil del usuario.",
-        propio: "No puedes desactivar ni modificar tu propia cuenta.",
+        propio: "No puedes modificar tu propia cuenta.",
         usuario: "No se encontró el usuario seleccionado.",
         objetivo: "No puedes gestionar este tipo de cuenta.",
         estado: "La cuenta ya tiene ese estado.",
         desactivacion: "No se pudo desactivar la cuenta.",
         reactivacion: "No se pudo reactivar la cuenta.",
+        editar_inactivo: "No puedes editar una cuenta desactivada.",
+        edicion: "No se pudo actualizar el perfil del usuario.",
+        credenciales: "No se pudieron actualizar las credenciales del usuario.",
         lista: "No se pudo cargar la lista de usuarios.",
     };
 
@@ -168,6 +162,12 @@ export default async function UsuariosPage({
                 </div>
             )}
 
+            {params.editado === "1" && (
+                <div className="rounded-lg border border-green-300 bg-green-50 p-4 text-green-800">
+                    Usuario actualizado correctamente.
+                </div>
+            )}
+
             {params.desactivado === "1" && (
                 <div className="rounded-lg border border-green-300 bg-green-50 p-4 text-green-800">
                     Usuario desactivado correctamente.
@@ -186,20 +186,16 @@ export default async function UsuariosPage({
                 </div>
             )}
 
-            {errorPerfiles || errorAuth ? (
+            {(errorPerfiles || errorAuth) && (
                 <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-red-800">{errores.lista}</div>
-            ) : null}
+            )}
 
             {/* FORMULARIO DE CREACIÓN */}
             <section className="rounded-xl border p-6 shadow-sm">
                 <h2 className="text-xl font-semibold">Registrar nuevo usuario</h2>
 
                 <p className="mt-1 text-sm text-gray-500">
-                    {esAdminGeneral
-                        ? "Puedes crear administradores generales, administradores de sucursal y empleados."
-                        : `Puedes crear empleados para la sucursal ${
-                              nombresSucursales.get(perfil.sucursal_id ?? "") ?? ""
-                          }.`}
+                    Puedes crear administradores generales, administradores de sucursal y empleados.
                 </p>
 
                 <form action={crearUsuario} className="mt-6 space-y-5">
@@ -268,56 +264,36 @@ export default async function UsuariosPage({
                             <option value="" disabled>
                                 Selecciona un rol
                             </option>
-
-                            {esAdminGeneral && (
-                                <>
-                                    <option value="admin_general">Administrador general</option>
-
-                                    <option value="admin_sucursal">Administrador de sucursal</option>
-                                </>
-                            )}
-
+                            <option value="admin_general">Administrador general</option>
+                            <option value="admin_sucursal">Administrador de sucursal</option>
                             <option value="empleado">Empleado</option>
                         </select>
                     </div>
 
-                    {esAdminGeneral ? (
-                        <div>
-                            <label htmlFor="sucursal_id" className="mb-2 block text-sm font-medium">
-                                Sucursal asignada
-                            </label>
+                    <div>
+                        <label htmlFor="sucursal_id" className="mb-2 block text-sm font-medium">
+                            Sucursal asignada
+                        </label>
 
-                            <select
-                                id="sucursal_id"
-                                name="sucursal_id"
-                                defaultValue=""
-                                className="w-full rounded-lg border bg-white px-4 py-3"
-                            >
-                                <option value="">Sin sucursal (solo administrador general)</option>
+                        <select
+                            id="sucursal_id"
+                            name="sucursal_id"
+                            defaultValue=""
+                            className="w-full rounded-lg border bg-white px-4 py-3"
+                        >
+                            <option value="">Sin sucursal (solo administrador general)</option>
 
-                                {((sucursalesActivas as Sucursal[]) ?? []).map(sucursal => (
-                                    <option key={sucursal.id} value={sucursal.id}>
-                                        {sucursal.nombre}
-                                    </option>
-                                ))}
-                            </select>
+                            {((sucursalesActivas as Sucursal[]) ?? []).map(sucursal => (
+                                <option key={sucursal.id} value={sucursal.id}>
+                                    {sucursal.nombre}
+                                </option>
+                            ))}
+                        </select>
 
-                            <p className="mt-2 text-xs text-gray-500">
-                                Los administradores generales no necesitan sucursal. Los demás roles sí.
-                            </p>
-                        </div>
-                    ) : (
-                        <div>
-                            <label className="mb-2 block text-sm font-medium">Sucursal asignada</label>
-
-                            <input
-                                type="text"
-                                disabled
-                                value={nombresSucursales.get(perfil.sucursal_id ?? "") ?? "Tu sucursal asignada"}
-                                className="w-full rounded-lg border bg-gray-100 px-4 py-3"
-                            />
-                        </div>
-                    )}
+                        <p className="mt-2 text-xs text-gray-500">
+                            Los administradores generales no necesitan sucursal. Los demás roles sí.
+                        </p>
+                    </div>
 
                     <button
                         type="submit"
@@ -334,46 +310,32 @@ export default async function UsuariosPage({
                     <h2 className="text-xl font-semibold">Usuarios registrados</h2>
 
                     <p className="mt-1 text-sm text-gray-500">
-                        {esAdminGeneral
-                            ? "Consulta y administra las cuentas de todas las sucursales."
-                            : "Consulta y administra los empleados de tu sucursal."}
+                        Consulta y administra las cuentas de todas las sucursales.
                     </p>
                 </div>
 
                 {/* FILTROS */}
                 <form method="GET" className="grid gap-4 sm:grid-cols-3">
-                    {esAdminGeneral ? (
-                        <div>
-                            <label htmlFor="filtro-sucursal" className="mb-2 block text-sm font-medium">
-                                Sucursal
-                            </label>
+                    <div>
+                        <label htmlFor="filtro-sucursal" className="mb-2 block text-sm font-medium">
+                            Sucursal
+                        </label>
 
-                            <select
-                                id="filtro-sucursal"
-                                name="sucursal"
-                                defaultValue={sucursalSeleccionada}
-                                className="w-full rounded-lg border bg-white px-3 py-2"
-                            >
-                                <option value="">Todas las sucursales</option>
+                        <select
+                            id="filtro-sucursal"
+                            name="sucursal"
+                            defaultValue={sucursalSeleccionada}
+                            className="w-full rounded-lg border bg-white px-3 py-2"
+                        >
+                            <option value="">Todas las sucursales</option>
 
-                                {sucursales.map(sucursal => (
-                                    <option key={sucursal.id} value={sucursal.id}>
-                                        {sucursal.nombre}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                    ) : (
-                        <div>
-                            <label className="mb-2 block text-sm font-medium">Sucursal</label>
-
-                            <input
-                                disabled
-                                value={nombresSucursales.get(perfil.sucursal_id ?? "") ?? "Tu sucursal"}
-                                className="w-full rounded-lg border bg-gray-100 px-3 py-2"
-                            />
-                        </div>
-                    )}
+                            {sucursales.map(sucursal => (
+                                <option key={sucursal.id} value={sucursal.id}>
+                                    {sucursal.nombre}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
 
                     <div>
                         <label htmlFor="filtro-estado" className="mb-2 block text-sm font-medium">
@@ -446,28 +408,41 @@ export default async function UsuariosPage({
                                     <td className="px-4 py-4">
                                         {usuario.id === perfil.id ? (
                                             <span className="text-xs text-gray-500">Tu cuenta</span>
-                                        ) : usuario.activo ? (
-                                            <form action={desactivarUsuario}>
-                                                <input type="hidden" name="usuario_id" value={usuario.id} />
-
-                                                <button
-                                                    type="submit"
-                                                    className="rounded-lg border border-red-300 px-3 py-2 text-xs font-medium text-red-700 transition hover:bg-red-50"
-                                                >
-                                                    Desactivar
-                                                </button>
-                                            </form>
                                         ) : (
-                                            <form action={reactivarUsuario}>
-                                                <input type="hidden" name="usuario_id" value={usuario.id} />
+                                            <div className="flex flex-wrap gap-2">
+                                                {usuario.activo && (
+                                                    <Link
+                                                        href={`/admin/usuarios/${usuario.id}/editar`}
+                                                        className="rounded-lg border border-blue-300 px-3 py-2 text-xs font-medium text-blue-700 transition hover:bg-blue-50"
+                                                    >
+                                                        Editar
+                                                    </Link>
+                                                )}
 
-                                                <button
-                                                    type="submit"
-                                                    className="rounded-lg border border-green-300 px-3 py-2 text-xs font-medium text-green-700 transition hover:bg-green-50"
-                                                >
-                                                    Reactivar
-                                                </button>
-                                            </form>
+                                                {usuario.activo ? (
+                                                    <form action={desactivarUsuario}>
+                                                        <input type="hidden" name="usuario_id" value={usuario.id} />
+
+                                                        <button
+                                                            type="submit"
+                                                            className="rounded-lg border border-red-300 px-3 py-2 text-xs font-medium text-red-700 transition hover:bg-red-50"
+                                                        >
+                                                            Desactivar
+                                                        </button>
+                                                    </form>
+                                                ) : (
+                                                    <form action={reactivarUsuario}>
+                                                        <input type="hidden" name="usuario_id" value={usuario.id} />
+
+                                                        <button
+                                                            type="submit"
+                                                            className="rounded-lg border border-green-300 px-3 py-2 text-xs font-medium text-green-700 transition hover:bg-green-50"
+                                                        >
+                                                            Reactivar
+                                                        </button>
+                                                    </form>
+                                                )}
+                                            </div>
                                         )}
                                     </td>
                                 </tr>

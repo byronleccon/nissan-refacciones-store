@@ -20,6 +20,7 @@ export default async function EmpleadosPage({
         creado?: string;
         desactivado?: string;
         reactivado?: string;
+        editado?: string;
         estado?: string;
     }>;
 }) {
@@ -27,17 +28,14 @@ export default async function EmpleadosPage({
     const admin = createAdminClient();
     const params = await searchParams;
 
-    // Consultar el nombre de la sucursal del administrador.
     const { data: sucursal } = await admin
         .from("sucursales")
         .select("id, nombre")
         .eq("id", perfil.sucursal_id ?? "")
         .maybeSingle();
 
-    // Filtrar el estado de las cuentas.
     const estado = ["todos", "activos", "inactivos"].includes(params.estado ?? "") ? params.estado! : "todos";
 
-    // Consultar exclusivamente empleados de esta sucursal.
     let consulta = admin
         .from("perfiles")
         .select("id, nombre_completo, rol, sucursal_id, activo")
@@ -53,7 +51,6 @@ export default async function EmpleadosPage({
 
     const { data: perfiles, error: errorPerfiles } = await consulta;
 
-    // Obtener los correos de las cuentas de Auth.
     const usuariosAuth: {
         id: string;
         email?: string;
@@ -81,9 +78,7 @@ export default async function EmpleadosPage({
             })),
         );
 
-        if (data.users.length < 1000) {
-            break;
-        }
+        if (data.users.length < 1000) break;
 
         pagina++;
     }
@@ -108,6 +103,9 @@ export default async function EmpleadosPage({
         estado: "La cuenta ya tiene ese estado.",
         desactivacion: "No se pudo desactivar la cuenta.",
         reactivacion: "No se pudo reactivar la cuenta.",
+        editar_inactivo: "No puedes editar una cuenta desactivada.",
+        edicion: "No se pudo actualizar el perfil del empleado.",
+        credenciales: "No se pudieron actualizar las credenciales del empleado.",
     };
 
     return (
@@ -127,6 +125,12 @@ export default async function EmpleadosPage({
             {params.creado === "1" && (
                 <div className="rounded-lg border border-green-300 bg-green-50 p-4 text-green-800">
                     Empleado creado correctamente.
+                </div>
+            )}
+
+            {params.editado === "1" && (
+                <div className="rounded-lg border border-green-300 bg-green-50 p-4 text-green-800">
+                    Empleado actualizado correctamente.
                 </div>
             )}
 
@@ -294,29 +298,40 @@ export default async function EmpleadosPage({
                                     </td>
 
                                     <td className="px-4 py-4">
-                                        {empleado.activo ? (
-                                            <form action={desactivarUsuario}>
-                                                <input type="hidden" name="usuario_id" value={empleado.id} />
+                                        <div className="flex flex-wrap gap-2">
+                                            {empleado.activo ? (
+                                                <>
+                                                    <Link
+                                                        href={`/admin/usuarios/${empleado.id}/editar`}
+                                                        className="rounded-lg border border-blue-300 px-3 py-2 text-xs font-medium text-blue-700 transition hover:bg-blue-50"
+                                                    >
+                                                        Editar
+                                                    </Link>
 
-                                                <button
-                                                    type="submit"
-                                                    className="rounded-lg border border-red-300 px-3 py-2 text-xs font-medium text-red-700 transition hover:bg-red-50"
-                                                >
-                                                    Desactivar
-                                                </button>
-                                            </form>
-                                        ) : (
-                                            <form action={reactivarUsuario}>
-                                                <input type="hidden" name="usuario_id" value={empleado.id} />
+                                                    <form action={desactivarUsuario}>
+                                                        <input type="hidden" name="usuario_id" value={empleado.id} />
 
-                                                <button
-                                                    type="submit"
-                                                    className="rounded-lg border border-green-300 px-3 py-2 text-xs font-medium text-green-700 transition hover:bg-green-50"
-                                                >
-                                                    Reactivar
-                                                </button>
-                                            </form>
-                                        )}
+                                                        <button
+                                                            type="submit"
+                                                            className="rounded-lg border border-red-300 px-3 py-2 text-xs font-medium text-red-700 transition hover:bg-red-50"
+                                                        >
+                                                            Desactivar
+                                                        </button>
+                                                    </form>
+                                                </>
+                                            ) : (
+                                                <form action={reactivarUsuario}>
+                                                    <input type="hidden" name="usuario_id" value={empleado.id} />
+
+                                                    <button
+                                                        type="submit"
+                                                        className="rounded-lg border border-green-300 px-3 py-2 text-xs font-medium text-green-700 transition hover:bg-green-50"
+                                                    >
+                                                        Reactivar
+                                                    </button>
+                                                </form>
+                                            )}
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
