@@ -20,8 +20,9 @@ function formatoPrecio(cantidad: number) {
 function estadoLegible(estado: string) {
     const estados: Record<string, string> = {
         confirmado: "Confirmado",
-        preparado: "Preparado",
-        entregado: "Entregado",
+        preparando: "En preparación",
+        listo: "Listo para recoger",
+        recogido: "Recogido",
         vencido: "Vencido",
         cancelado: "Cancelado",
     };
@@ -29,7 +30,13 @@ function estadoLegible(estado: string) {
     return estados[estado] ?? estado;
 }
 
-export default async function MisPedidosPage() {
+export default async function MisPedidosPage({
+    searchParams,
+}: {
+    searchParams: Promise<{
+        orden?: string;
+    }>;
+}) {
     const supabase = await createClient();
 
     const {
@@ -38,11 +45,15 @@ export default async function MisPedidosPage() {
 
     if (!user) redirect("/login");
 
+    const parametros = await searchParams;
+
+    const orden = parametros.orden === "antiguos" ? "antiguos" : "recientes";
+
     const { data: pedidos, error } = await supabase
         .from("pedidos")
         .select("id, folio, sucursal_id, fecha_recogida, fecha_limite, estado, total, creado_en")
         .eq("cliente_id", user.id)
-        .order("creado_en", { ascending: false });
+        .order("creado_en", { ascending: orden === "antiguos" });
 
     if (error) {
         console.error("Error al consultar pedidos:", error.message);
@@ -70,6 +81,32 @@ export default async function MisPedidosPage() {
                 <h1 className="text-3xl font-bold">Mis pedidos</h1>
 
                 <p className="mt-2 text-muted-foreground">Consulta tus compras y el estado de tus pedidos.</p>
+            </div>
+
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4">
+                <div>
+                    <h2 className="font-semibold">Ordenar pedidos</h2>
+                    <p className="text-sm text-muted-foreground">Organiza tus compras por fecha de creación.</p>
+                </div>
+
+                <form method="get" className="flex items-center gap-2">
+                    <select
+                        name="orden"
+                        defaultValue={orden}
+                        className="rounded-md border bg-background px-3 py-2 text-sm"
+                        aria-label="Ordenar pedidos por fecha"
+                    >
+                        <option value="recientes">Más recientes primero</option>
+                        <option value="antiguos">Más antiguos primero</option>
+                    </select>
+
+                    <button
+                        type="submit"
+                        className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+                    >
+                        Ordenar
+                    </button>
+                </form>
             </div>
 
             {error ? (

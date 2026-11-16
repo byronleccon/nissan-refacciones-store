@@ -110,12 +110,11 @@ function AccionesPedido({ id, estado, fechaLimite }: { id: string; estado: strin
 }
 
 export default async function AdminPedidoDetallePage({ params }: { params: Promise<{ id: string }> }) {
-    await exigirRol(["admin_general", "admin_sucursal"]);
+    const perfil = await exigirRol(["admin_general", "admin_sucursal", "empleado"]);
 
     const { id } = await params;
     const supabase = await createClient();
 
-    // Consultar pedido.
     const { data: pedido, error: errorPedido } = await supabase
         .from("pedidos")
         .select(
@@ -136,6 +135,7 @@ export default async function AdminPedidoDetallePage({ params }: { params: Promi
 
     if (errorPedido) {
         console.error("Error al consultar pedido:", errorPedido.message);
+
         throw new Error("No fue posible consultar el pedido.");
     }
 
@@ -143,19 +143,18 @@ export default async function AdminPedidoDetallePage({ params }: { params: Promi
         notFound();
     }
 
-    // Consultar productos e historial.
     const [detalleResult, historialResult, sucursalResult, clienteResult] = await Promise.all([
         supabase
             .from("detalle_pedido")
             .select(
                 `
-                    id,
-                    producto_id,
-                    sku,
-                    nombre,
-                    precio_unitario,
-                    cantidad
-                `,
+                id,
+                producto_id,
+                sku,
+                nombre,
+                precio_unitario,
+                cantidad
+            `,
             )
             .eq("pedido_id", id),
 
@@ -163,12 +162,12 @@ export default async function AdminPedidoDetallePage({ params }: { params: Promi
             .from("historial_estados_pedido")
             .select(
                 `
-                    id,
-                    estado,
-                    usuario_id,
-                    nota,
-                    creado_en
-                `,
+                id,
+                estado,
+                usuario_id,
+                nota,
+                creado_en
+            `,
             )
             .eq("pedido_id", id)
             .order("creado_en", { ascending: true }),
@@ -195,7 +194,6 @@ export default async function AdminPedidoDetallePage({ params }: { params: Promi
     const sucursal = sucursalResult.data;
     const cliente = clienteResult.data;
 
-    // Consultar los nombres de los usuarios que realizaron cambios.
     const usuarioIds = [
         ...new Set(
             historial
@@ -216,11 +214,13 @@ export default async function AdminPedidoDetallePage({ params }: { params: Promi
 
     return (
         <main className="mx-auto max-w-6xl p-6">
-            <Link href="/admin/pedidos" className="text-sm text-muted-foreground hover:underline">
+            <Link
+                href={perfil.rol === "empleado" ? "/empleado" : "/admin/pedidos"}
+                className="text-sm text-muted-foreground hover:underline"
+            >
                 ← Volver a gestión de pedidos
             </Link>
 
-            {/* Encabezado */}
             <header className="mb-8 mt-5">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <div>
@@ -237,7 +237,6 @@ export default async function AdminPedidoDetallePage({ params }: { params: Promi
                 <p className="mt-3 text-sm text-muted-foreground">Creado el {formatoFechaHora(pedido.creado_en)}</p>
             </header>
 
-            {/* Información general */}
             <section className="mb-6 grid gap-5 md:grid-cols-2">
                 <article className="rounded-xl border p-5">
                     <h2 className="mb-4 text-lg font-semibold">Información del cliente</h2>
@@ -265,18 +264,19 @@ export default async function AdminPedidoDetallePage({ params }: { params: Promi
                     <div className="mt-4 grid gap-3 sm:grid-cols-2">
                         <div>
                             <p className="text-sm text-muted-foreground">Fecha de recogida</p>
+
                             <p className="mt-1 font-medium">{formatoFecha(pedido.fecha_recogida)}</p>
                         </div>
 
                         <div>
                             <p className="text-sm text-muted-foreground">Fecha límite</p>
+
                             <p className="mt-1 font-medium">{formatoFechaHora(pedido.fecha_limite)}</p>
                         </div>
                     </div>
                 </article>
             </section>
 
-            {/* Productos */}
             <section className="mb-6 rounded-xl border p-5">
                 <h2 className="mb-5 text-lg font-semibold">Productos del pedido</h2>
 
@@ -327,7 +327,6 @@ export default async function AdminPedidoDetallePage({ params }: { params: Promi
                 </div>
             </section>
 
-            {/* Cambiar estado */}
             <section className="mb-6 rounded-xl border p-5">
                 <h2 className="mb-2 text-lg font-semibold">Administración del pedido</h2>
 
@@ -336,7 +335,6 @@ export default async function AdminPedidoDetallePage({ params }: { params: Promi
                 <AccionesPedido id={pedido.id} estado={pedido.estado} fechaLimite={pedido.fecha_limite} />
             </section>
 
-            {/* Historial */}
             <section className="rounded-xl border p-5">
                 <h2 className="mb-5 text-lg font-semibold">Historial de estados</h2>
 

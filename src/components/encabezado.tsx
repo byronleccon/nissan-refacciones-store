@@ -9,9 +9,12 @@ export async function Encabezado() {
     const perfil = await obtenerPerfilActual();
 
     let cantidadCarrito = 0;
+
     if (perfil) {
         const supabase = await createClient();
+
         const { data } = await supabase.from("carrito_items").select("cantidad").eq("usuario_id", perfil.id);
+
         cantidadCarrito = data?.reduce((s, i) => s + i.cantidad, 0) ?? 0;
     }
 
@@ -27,9 +30,27 @@ export async function Encabezado() {
                         Catálogo
                     </Link>
 
+                    {perfil?.rol === "cliente" && (
+                        <Link href="/mis-pedidos" className="hover:underline">
+                            Mis pedidos
+                        </Link>
+                    )}
+
+                    {perfil?.rol === "empleado" && (
+                        <Link href="/empleado" className="hover:underline">
+                            Panel de empleado
+                        </Link>
+                    )}
+
                     {perfil?.rol === "admin_general" && (
                         <Link href="/admin" className="hover:underline">
                             Administración
+                        </Link>
+                    )}
+
+                    {perfil?.rol === "admin_sucursal" && (
+                        <Link href="/admin/empleados" className="hover:underline">
+                            Gestionar empleados
                         </Link>
                     )}
 
@@ -41,6 +62,7 @@ export async function Encabezado() {
 
                     <Link href="/carrito" aria-label="Carrito" className="relative hover:opacity-80">
                         <ShoppingCart className="size-5" />
+
                         {cantidadCarrito > 0 && (
                             <span className="absolute -right-2 -top-2 rounded-full bg-white px-1.5 text-xs font-bold text-marca">
                                 {cantidadCarrito}
@@ -59,6 +81,7 @@ export async function Encabezado() {
                             <Link href="/login" className="hover:underline">
                                 Iniciar sesión
                             </Link>
+
                             <Link href="/registro" className="rounded-md bg-white px-3 py-1 text-marca">
                                 Crear cuenta
                             </Link>

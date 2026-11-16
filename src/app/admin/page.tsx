@@ -19,9 +19,7 @@ export default async function AdminPage() {
             <section className="mt-8 grid gap-5 sm:grid-cols-2">
                 <Link href="/admin/pedidos" className="rounded-xl border p-6 transition-colors hover:bg-muted">
                     <h2 className="text-xl font-semibold">Gestión de pedidos</h2>
-
                     <p className="mt-2 text-sm text-muted-foreground">Consulta los pedidos y revisa su estado.</p>
-
                     <span className="mt-4 inline-block text-sm font-medium text-primary">Ver pedidos →</span>
                 </Link>
 
@@ -32,16 +30,22 @@ export default async function AdminPage() {
                     <h2 className="text-xl font-semibold">
                         {esAdminGeneral ? "Gestión de usuarios" : "Gestión de empleados"}
                     </h2>
-
                     <p className="mt-2 text-sm text-muted-foreground">
                         {esAdminGeneral
                             ? "Crea administradores y empleados, y asigna sus sucursales."
                             : "Crea empleados y administra sus cuentas dentro de tu sucursal."}
                     </p>
-
                     <span className="mt-4 inline-block text-sm font-medium text-primary">
                         {esAdminGeneral ? "Administrar usuarios →" : "Administrar empleados →"}
                     </span>
+                </Link>
+
+                <Link href="/sucursal" className="rounded-xl border p-6 transition-colors hover:bg-muted">
+                    <h2 className="text-xl font-semibold">Gestión de sucursal</h2>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                        Consulta el inventario, las existencias y administra los movimientos de productos.
+                    </p>
+                    <span className="mt-4 inline-block text-sm font-medium text-primary">Administrar inventario →</span>
                 </Link>
             </section>
         </main>
