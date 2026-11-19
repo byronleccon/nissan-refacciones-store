@@ -13,11 +13,17 @@ type Props = {
     usuarioId: string;
     activo: boolean;
     mostrarEliminar?: boolean;
+    textoEditar?: string;
 };
 
 const EVENTO_MENU = "menu-acciones-usuario";
 
-export default function MenuAccionesUsuario({ usuarioId, activo, mostrarEliminar = true }: Props) {
+export default function MenuAccionesUsuario({
+    usuarioId,
+    activo,
+    mostrarEliminar = true,
+    textoEditar = "Editar usuario",
+}: Props) {
     const [abierto, setAbierto] = useState(false);
     const [montado, setMontado] = useState(false);
 
@@ -223,7 +229,7 @@ export default function MenuAccionesUsuario({ usuarioId, activo, mostrarEliminar
                             style={estiloOpcion}
                         >
                             <Pencil size={16} strokeWidth={1.7} color="#6b7280" />
-                            Editar empleado
+                            {textoEditar}
                         </Link>
 
                         <form action={activo ? desactivarUsuario : reactivarUsuario} onSubmit={confirmarCambioEstado}>
