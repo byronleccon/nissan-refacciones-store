@@ -52,7 +52,11 @@ export default function LoginPage() {
                         </div>
 
                         {errorServidor && <p className="text-sm text-red-600">{errorServidor}</p>}
-
+                        <p className="text-right text-sm">
+                            <Link href="/recuperar-contrasena" className="underline">
+                                ¿Has olvidado tu contraseña?
+                            </Link>
+                        </p>
                         <Button type="submit" className="w-full" disabled={isSubmitting}>
                             {isSubmitting ? "Entrando..." : "Entrar"}
                         </Button>
