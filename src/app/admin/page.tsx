@@ -23,21 +23,12 @@ export default async function AdminPage() {
                     <span className="mt-4 inline-block text-sm font-medium text-primary">Ver pedidos →</span>
                 </Link>
 
-                <Link
-                    href={esAdminGeneral ? "/admin/usuarios" : "/admin/empleados"}
-                    className="rounded-xl border p-6 transition-colors hover:bg-muted"
-                >
-                    <h2 className="text-xl font-semibold">
-                        {esAdminGeneral ? "Gestión de usuarios" : "Gestión de empleados"}
-                    </h2>
+                <Link href="/admin/productos/nuevo" className="rounded-xl border p-6 transition-colors hover:bg-muted">
+                    <h2 className="text-xl font-semibold">Agregar producto</h2>
                     <p className="mt-2 text-sm text-muted-foreground">
-                        {esAdminGeneral
-                            ? "Crea administradores y empleados, y asigna sus sucursales."
-                            : "Crea empleados y administra sus cuentas dentro de tu sucursal."}
+                        Da de alta una refacción con su imagen, categoría y vehículos compatibles.
                     </p>
-                    <span className="mt-4 inline-block text-sm font-medium text-primary">
-                        {esAdminGeneral ? "Administrar usuarios →" : "Administrar empleados →"}
-                    </span>
+                    <span className="mt-4 inline-block text-sm font-medium text-primary">Agregar producto →</span>
                 </Link>
 
                 <Link href="/sucursal" className="rounded-xl border p-6 transition-colors hover:bg-muted">
