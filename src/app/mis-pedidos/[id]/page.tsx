@@ -1,9 +1,14 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import BotonCancelarPedido from "../BotonCancelarPedido";
 
 interface Props {
     params: Promise<{ id: string }>;
+    searchParams: Promise<{
+        cancelado?: string;
+        error?: string;
+    }>;
 }
 
 function formatoPrecio(cantidad: number) {
@@ -31,8 +36,9 @@ function formatoFechaHora(fecha: string) {
 function estadoLegible(estado: string) {
     const estados: Record<string, string> = {
         confirmado: "Confirmado",
-        preparado: "Preparado",
-        entregado: "Entregado",
+        preparando: "En preparación",
+        listo: "Listo para recoger",
+        recogido: "Recogido",
         vencido: "Vencido",
         cancelado: "Cancelado",
     };
@@ -40,8 +46,9 @@ function estadoLegible(estado: string) {
     return estados[estado] ?? estado;
 }
 
-export default async function DetallePedidoPage({ params }: Props) {
+export default async function DetallePedidoPage({ params, searchParams }: Props) {
     const { id } = await params;
+    const parametros = await searchParams;
 
     const supabase = await createClient();
 
@@ -119,6 +126,35 @@ export default async function DetallePedidoPage({ params }: Props) {
                 </span>
             </div>
 
+            {/* Mensaje de cancelación exitosa */}
+            {parametros.cancelado === "1" && pedido.estado === "cancelado" && (
+                <div className="mb-6 rounded-lg border border-green-300 bg-green-50 p-4 text-green-800">
+                    Tu pedido se canceló correctamente. El inventario reservado ha sido liberado.
+                </div>
+            )}
+
+            {/* Mensaje de error */}
+            {parametros.error === "cancelacion" && (
+                <div className="mb-6 rounded-lg border border-red-300 bg-red-50 p-4 text-red-800">
+                    No fue posible cancelar el pedido. Puede que su estado haya cambiado. Actualiza la página e
+                    inténtalo de nuevo si todavía es posible.
+                </div>
+            )}
+
+            {/* Cancelación disponible solo para pedidos confirmados */}
+            {pedido.estado === "confirmado" && (
+                <section className="mb-6 rounded-xl border border-red-200 p-5">
+                    <h2 className="font-semibold">¿Ya no necesitas este pedido?</h2>
+
+                    <p className="mb-4 mt-1 text-sm text-muted-foreground">
+                        Puedes cancelarlo mientras todavía esté confirmado. Al hacerlo, se liberará el inventario
+                        reservado.
+                    </p>
+
+                    <BotonCancelarPedido pedidoId={pedido.id} />
+                </section>
+            )}
+
             <div className="grid gap-6 md:grid-cols-2">
                 <section className="rounded-xl border p-5">
                     <h2 className="mb-4 text-lg font-semibold">Información del pedido</h2>
@@ -126,16 +162,19 @@ export default async function DetallePedidoPage({ params }: Props) {
                     <div className="space-y-3 text-sm">
                         <div>
                             <p className="text-muted-foreground">Fecha de compra</p>
+
                             <p className="font-medium">{formatoFechaHora(pedido.creado_en)}</p>
                         </div>
 
                         <div>
                             <p className="text-muted-foreground">Fecha de recogida</p>
+
                             <p className="font-medium">{formatoFecha(pedido.fecha_recogida)}</p>
                         </div>
 
                         <div>
                             <p className="text-muted-foreground">Fecha límite de recogida</p>
+
                             <p className="font-medium">{formatoFechaHora(pedido.fecha_limite)}</p>
                         </div>
                     </div>

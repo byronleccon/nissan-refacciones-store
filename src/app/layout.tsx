@@ -14,14 +14,17 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-    title: "Refacciones Nissan",
-    description: "Tienda en línea de refacciones Nissan",
+    title: {
+        default: "Tsuru ProParts | Refacciones automotrices",
+        template: "%s | Tsuru ProParts",
+    },
+    description: "Encuentra refacciones Nissan, aparta en línea y recoge tus productos en la sucursal que prefieras.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
     return (
         <html lang="es" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
-            <body className="min-h-full flex flex-col">
+            <body className="flex min-h-full flex-col">
                 <Encabezado />
                 {children}
             </body>

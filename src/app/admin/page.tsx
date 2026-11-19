@@ -20,32 +20,54 @@ export default async function AdminPage() {
                 {esAdminGeneral && (
                     <Link href="/admin/usuarios" className="rounded-xl border p-6 transition-colors hover:bg-muted">
                         <h2 className="text-xl font-semibold">Gestionar empleados (usuarios)</h2>
+
                         <p className="mt-2 text-sm text-muted-foreground">
                             Consulta, registra y administra los empleados y sus permisos.
                         </p>
+
                         <span className="mt-4 inline-block text-sm font-medium text-primary">Gestionar usuarios →</span>
+                    </Link>
+                )}
+
+                {esAdminGeneral && (
+                    <Link href="/admin/sucursales" className="rounded-xl border p-6 transition-colors hover:bg-muted">
+                        <h2 className="text-xl font-semibold">Administrar sucursales</h2>
+
+                        <p className="mt-2 text-sm text-muted-foreground">
+                            Crea nuevas sucursales y consulta las sucursales registradas de Tsuru ProParts.
+                        </p>
+
+                        <span className="mt-4 inline-block text-sm font-medium text-primary">
+                            Administrar sucursales →
+                        </span>
                     </Link>
                 )}
 
                 <Link href="/admin/pedidos" className="rounded-xl border p-6 transition-colors hover:bg-muted">
                     <h2 className="text-xl font-semibold">Gestión de pedidos</h2>
+
                     <p className="mt-2 text-sm text-muted-foreground">Consulta los pedidos y revisa su estado.</p>
+
                     <span className="mt-4 inline-block text-sm font-medium text-primary">Ver pedidos →</span>
                 </Link>
 
                 <Link href="/admin/productos/nuevo" className="rounded-xl border p-6 transition-colors hover:bg-muted">
                     <h2 className="text-xl font-semibold">Agregar producto</h2>
+
                     <p className="mt-2 text-sm text-muted-foreground">
                         Da de alta una refacción con su imagen, categoría y vehículos compatibles.
                     </p>
+
                     <span className="mt-4 inline-block text-sm font-medium text-primary">Agregar producto →</span>
                 </Link>
 
                 <Link href="/sucursal" className="rounded-xl border p-6 transition-colors hover:bg-muted">
                     <h2 className="text-xl font-semibold">Gestión de sucursal</h2>
+
                     <p className="mt-2 text-sm text-muted-foreground">
                         Consulta el inventario, las existencias y administra los movimientos de productos.
                     </p>
+
                     <span className="mt-4 inline-block text-sm font-medium text-primary">Administrar inventario →</span>
                 </Link>
             </section>

@@ -11,6 +11,7 @@ import {
 } from "@/lib/validaciones/auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { resolveMx } from "node:dns/promises";
 
 export type ResultadoAccion = { error: string } | { mensaje: string } | undefined;
 
@@ -18,18 +19,45 @@ function obtenerUrlSitio() {
     return process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 }
 
+// Comprueba que el dominio tenga servidores de correo configurados.
+async function comprobarDominioCorreo(correo: string): Promise<string | null> {
+    const dominio = correo.split("@")[1];
+
+    try {
+        const registros = await resolveMx(dominio);
+
+        if (!registros || registros.length === 0) {
+            return "Este dominio no tiene servidores de correo configurados. Revisa la dirección.";
+        }
+
+        return null;
+    } catch (error) {
+        const codigo = (error as NodeJS.ErrnoException).code;
+
+        if (codigo === "ENOTFOUND" || codigo === "ENODATA") {
+            return "No encontramos servidores de correo para este dominio. Comprueba si lo escribiste correctamente.";
+        }
+
+        console.error("Error temporal al comprobar el dominio:", codigo);
+
+        return "No pudimos verificar el dominio en este momento. Inténtalo nuevamente.";
+    }
+}
+
 // Iniciar sesión.
 export async function iniciarSesion(datos: DatosLogin): Promise<ResultadoAccion> {
     const validado = esquemaLogin.safeParse(datos);
 
     if (!validado.success) {
-        return { error: "Los datos no son válidos." };
+        return {
+            error: validado.error.issues[0]?.message || "Revisa los datos.",
+        };
     }
 
     const supabase = await createClient();
 
     const { error } = await supabase.auth.signInWithPassword({
-        email: validado.data.correo.trim().toLowerCase(),
+        email: validado.data.correo,
         password: validado.data.contrasena,
     });
 
@@ -50,19 +78,35 @@ export async function registrarse(datos: DatosRegistro): Promise<ResultadoAccion
     const validado = esquemaRegistro.safeParse(datos);
 
     if (!validado.success) {
-        return { error: "Revisa los datos del formulario." };
+        return {
+            error: validado.error.issues[0]?.message || "Revisa los datos.",
+        };
     }
 
+    const { correo, contrasena, nombre_completo, telefono } = validado.data;
+
+    // Comprobar registros MX del correo.
+    const errorDominio = await comprobarDominioCorreo(correo);
+
+    if (errorDominio) {
+        return {
+            error: errorDominio,
+        };
+    }
+
+    // Crear cuenta en Supabase.
+    // La contraseña se valida mediante Zod.
+    // No se consulta ningún servicio de contraseñas filtradas.
     const supabase = await createClient();
 
     const { error } = await supabase.auth.signUp({
-        email: validado.data.correo.trim().toLowerCase(),
-        password: validado.data.contrasena,
+        email: correo,
+        password: contrasena,
         options: {
             emailRedirectTo: `${obtenerUrlSitio()}/auth/callback?next=/login`,
             data: {
-                nombre_completo: validado.data.nombre_completo,
-                telefono: validado.data.telefono,
+                nombre_completo,
+                telefono,
             },
         },
     });
@@ -70,8 +114,14 @@ export async function registrarse(datos: DatosRegistro): Promise<ResultadoAccion
     if (error) {
         console.error("Error al registrar usuario:", error.code, error.message);
 
+        if (error.code === "user_already_exists" || error.code === "email_exists") {
+            return {
+                error: "Este correo electrónico ya está en uso. Prueba con otro correo o inicia sesión.",
+            };
+        }
+
         return {
-            error: "No se pudo crear la cuenta. Comprueba el correo e inténtalo de nuevo.",
+            error: "No se pudo crear la cuenta. Comprueba los datos e inténtalo nuevamente.",
         };
     }
 
@@ -82,17 +132,20 @@ export async function registrarse(datos: DatosRegistro): Promise<ResultadoAccion
 }
 
 // Enviar correo de recuperación.
-
 export async function enviarRecuperacion(correo: string): Promise<ResultadoAccion> {
-    const validado = esquemaRecuperacion.safeParse({ correo });
+    const validado = esquemaRecuperacion.safeParse({
+        correo,
+    });
 
     if (!validado.success) {
-        return { error: "Escribe un correo electrónico válido." };
+        return {
+            error: validado.error.issues[0]?.message || "Escribe un correo válido.",
+        };
     }
 
     const supabase = await createClient();
 
-    const { error } = await supabase.auth.resetPasswordForEmail(validado.data.correo.trim().toLowerCase(), {
+    const { error } = await supabase.auth.resetPasswordForEmail(validado.data.correo, {
         redirectTo: `${obtenerUrlSitio()}/auth/confirm?next=/restablecer-contrasena`,
     });
 
@@ -118,7 +171,9 @@ export async function actualizarContrasena(datos: {
     const validado = esquemaNuevaContrasena.safeParse(datos);
 
     if (!validado.success) {
-        return { error: "Las contraseñas no son válidas o no coinciden." };
+        return {
+            error: validado.error.issues[0]?.message || "Revisa las contraseñas.",
+        };
     }
 
     const supabase = await createClient();

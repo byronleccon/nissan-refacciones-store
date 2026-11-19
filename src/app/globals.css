@@ -5,13 +5,16 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-    --color-marca: #c3002f;
-    --color-marca-oscuro: #8f0023;
+    --color-marca: #dc2626;
+    --color-marca-oscuro: #991b1b;
+
     --color-background: var(--background);
     --color-foreground: var(--foreground);
-    --font-sans: var(--font-sans);
+
+    --font-sans: var(--font-geist-sans);
     --font-mono: var(--font-geist-mono);
-    --font-heading: var(--font-sans);
+    --font-heading: var(--font-geist-sans);
+
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -20,11 +23,13 @@
     --color-sidebar-primary: var(--sidebar-primary);
     --color-sidebar-foreground: var(--sidebar-foreground);
     --color-sidebar: var(--sidebar);
+
     --color-chart-5: var(--chart-5);
     --color-chart-4: var(--chart-4);
     --color-chart-3: var(--chart-3);
     --color-chart-2: var(--chart-2);
     --color-chart-1: var(--chart-1);
+
     --color-ring: var(--ring);
     --color-input: var(--input);
     --color-border: var(--border);
@@ -41,6 +46,7 @@
     --color-popover: var(--popover);
     --color-card-foreground: var(--card-foreground);
     --color-card: var(--card);
+
     --radius-sm: calc(var(--radius) * 0.6);
     --radius-md: calc(var(--radius) * 0.8);
     --radius-lg: var(--radius);
@@ -51,72 +57,97 @@
 }
 
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --radius: 0.625rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0);
+    color-scheme: dark;
+
+    --background: #111318;
+    --foreground: #f5f5f5;
+
+    --card: #20232a;
+    --card-foreground: #f5f5f5;
+
+    --popover: #20232a;
+    --popover-foreground: #f5f5f5;
+
+    --primary: #dc2626;
+    --primary-foreground: #ffffff;
+
+    --secondary: #343a40;
+    --secondary-foreground: #ffffff;
+
+    --muted: #292d34;
+    --muted-foreground: #aeb4be;
+
+    --accent: #343a40;
+    --accent-foreground: #ffffff;
+
+    --destructive: #dc2626;
+
+    --border: #343a40;
+    --input: #343a40;
+    --ring: #dc2626;
+
+    --chart-1: #dc2626;
+    --chart-2: #9ca3af;
+    --chart-3: #6b7280;
+    --chart-4: #b91c1c;
+    --chart-5: #d1d5db;
+
+    --radius: 0.8rem;
+
+    --sidebar: #111318;
+    --sidebar-foreground: #f5f5f5;
+    --sidebar-primary: #dc2626;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #292d34;
+    --sidebar-accent-foreground: #ffffff;
+    --sidebar-border: #343a40;
+    --sidebar-ring: #dc2626;
 }
 
 .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
+    color-scheme: dark;
+
+    --background: #111318;
+    --foreground: #f5f5f5;
+
+    --card: #20232a;
+    --card-foreground: #f5f5f5;
+
+    --popover: #20232a;
+    --popover-foreground: #f5f5f5;
+
+    --primary: #dc2626;
+    --primary-foreground: #ffffff;
+
+    --secondary: #343a40;
+    --secondary-foreground: #ffffff;
+
+    --muted: #292d34;
+    --muted-foreground: #aeb4be;
+
+    --accent: #343a40;
+    --accent-foreground: #ffffff;
+
+    --destructive: #dc2626;
+
+    --border: #343a40;
+    --input: #343a40;
+    --ring: #dc2626;
+
+    --chart-1: #dc2626;
+    --chart-2: #9ca3af;
+    --chart-3: #6b7280;
+    --chart-4: #b91c1c;
+    --chart-5: #d1d5db;
+
+    --sidebar: #111318;
+    --sidebar-foreground: #f5f5f5;
+    --sidebar-primary: #dc2626;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #292d34;
+    --sidebar-accent-foreground: #ffffff;
+    --sidebar-border: #343a40;
+    --sidebar-ring: #dc2626;
 }
 
 @layer base {
@@ -124,16 +155,142 @@
         @apply border-border outline-ring/50;
     }
 
-    body {
-        @apply bg-background text-foreground;
+    html {
+        @apply font-sans scroll-smooth;
     }
 
-    html {
-        @apply font-sans;
+    body {
+        @apply bg-background text-foreground;
+        min-height: 100vh;
+        font-family: var(--font-geist-sans), Arial, sans-serif;
+        -webkit-font-smoothing: antialiased;
+    }
+
+    button,
+    a,
+    input,
+    select,
+    textarea {
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    button,
+    a {
+        transition-property: color, background-color, border-color, opacity, box-shadow, transform;
+        transition-duration: 180ms;
+        transition-timing-function: ease;
+    }
+
+    ::selection {
+        background: #dc2626;
+        color: white;
+    }
+
+    input,
+    select,
+    textarea {
+        accent-color: #dc2626;
     }
 }
 
-/* Corrección de visibilidad del menú de acciones de usuarios */
+/* Identidad visual Tsuru ProParts */
+
+.text-marca {
+    color: #dc2626;
+}
+
+.bg-marca {
+    background-color: #dc2626;
+}
+
+.hero-proparts {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    background:
+        radial-gradient(ellipse at 85% 20%, rgba(220, 38, 38, 0.25), transparent 35%),
+        linear-gradient(125deg, #111318 0%, #20232a 55%, #111318 100%);
+}
+
+.hero-proparts::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    opacity: 0.13;
+    background-image: linear-gradient(135deg, transparent 48%, #ffffff 49%, transparent 50%);
+    background-size: 34px 34px;
+    pointer-events: none;
+}
+
+.tarjeta-proparts {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    box-shadow: 0 5px 20px rgba(15, 23, 42, 0.035);
+    transition:
+        transform 180ms ease,
+        box-shadow 180ms ease,
+        border-color 180ms ease;
+}
+
+.tarjeta-proparts:hover {
+    transform: translateY(-3px);
+    border-color: rgba(220, 38, 38, 0.35);
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+}
+
+.boton-proparts {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0.65rem;
+    background: #dc2626;
+    color: white;
+    font-weight: 700;
+    padding: 0.8rem 1.25rem;
+    transition:
+        background 180ms ease,
+        transform 180ms ease;
+}
+
+.boton-proparts:hover {
+    background: #b91c1c;
+    transform: translateY(-1px);
+}
+
+.boton-proparts:focus-visible {
+    outline: 3px solid rgba(220, 38, 38, 0.35);
+    outline-offset: 3px;
+}
+
+.campo-proparts {
+    width: 100%;
+    min-height: 42px;
+    border: 1px solid var(--border);
+    border-radius: 0.6rem;
+    background: var(--card);
+    color: var(--foreground);
+    padding: 0.65rem 0.85rem;
+}
+
+.campo-proparts:focus {
+    border-color: #dc2626;
+    outline: 2px solid rgba(220, 38, 38, 0.15);
+}
+
+.texto-metalico {
+    color: #aeb4be;
+}
+
+.divisor-deportivo {
+    height: 4px;
+    width: 64px;
+    border-radius: 999px;
+    background: #dc2626;
+}
+
 .menu-acciones-usuario,
 .menu-acciones-usuario a,
 .menu-acciones-usuario button {
@@ -151,4 +308,101 @@
 
 .menu-acciones-usuario .eliminar-usuario {
     color: #dc2626 !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+    }
+
+    /* ESTÉTICA GLOBAL GRAFITO - TSURU PROPARTS */
+
+    body {
+        background: #111318 !important;
+        color: #f5f5f5;
+    }
+
+    /* Superficies y tarjetas */
+    .tarjeta-proparts,
+    [class*="bg-white"],
+    [class*="bg-gray-50"],
+    [class*="bg-slate-50"] {
+        background-color: #20232a;
+    }
+
+    /* Textos */
+    .text-gray-900,
+    .text-slate-900,
+    .text-black {
+        color: #f5f5f5;
+    }
+
+    .text-gray-600,
+    .text-gray-500,
+    .text-slate-600,
+    .text-slate-500 {
+        color: #aeb4be;
+    }
+
+    /* Bordes */
+    .border,
+    .border-gray-200,
+    .border-slate-200 {
+        border-color: #343a40;
+    }
+
+    /* Campos */
+    input,
+    select,
+    textarea {
+        background-color: #20232a;
+        color: #ffffff;
+        border-color: #343a40;
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+        color: #9ca3af;
+    }
+
+    /* Tablas */
+    table {
+        color: #f5f5f5;
+    }
+
+    thead {
+        background-color: #292d34;
+    }
+
+    tbody tr {
+        border-color: #343a40;
+    }
+
+    /* Botones principales */
+    .boton-proparts {
+        background-color: #dc2626;
+        color: #ffffff;
+    }
+
+    .boton-proparts:hover {
+        background-color: #b91c1c;
+    }
+
+    /* Menús desplegables */
+    [role="menu"],
+    [role="dialog"],
+    [role="listbox"] {
+        background-color: #20232a;
+        color: #ffffff;
+        border-color: #343a40;
+    }
+
+    /* Separadores */
+    hr {
+        border-color: #343a40;
+    }
 }
