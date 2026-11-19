@@ -414,3 +414,73 @@ export async function actualizarUsuario(formData: FormData) {
 
     redirect(`${rutaGestion}?editado=1`);
 }
+
+// Eliminar permanentemente una cuenta.
+// Solo el administrador general puede ejecutar esta acción.
+export async function eliminarUsuario(formData: FormData) {
+    const validacion = esquemaId.safeParse({
+        usuario_id: formData.get("usuario_id"),
+    });
+
+    if (!validacion.success) {
+        redirect("/admin/usuarios?error=datos");
+    }
+
+    const { admin, actor } = await obtenerContextoGestion();
+
+    if (actor.rol !== "admin_general") {
+        redirect("/admin?error=permisos");
+    }
+
+    const objetivo = await obtenerUsuarioGestionable(admin, actor, validacion.data.usuario_id);
+
+    // Comprobar referencias en las tablas conocidas del sistema.
+    const [pedidos, movimientos, historial, carrito] = await Promise.all([
+        admin.from("pedidos").select("id", { count: "exact", head: true }).eq("cliente_id", objetivo.id),
+
+        admin.from("movimientos_inventario").select("id", { count: "exact", head: true }).eq("usuario_id", objetivo.id),
+
+        admin
+            .from("historial_estados_pedido")
+            .select("id", { count: "exact", head: true })
+            .eq("usuario_id", objetivo.id),
+
+        admin.from("carrito_items").select("producto_id", { count: "exact", head: true }).eq("usuario_id", objetivo.id),
+    ]);
+
+    if (pedidos.error || movimientos.error || historial.error || carrito.error) {
+        console.error("Error al comprobar referencias del usuario:", {
+            pedidos: pedidos.error?.message,
+            movimientos: movimientos.error?.message,
+            historial: historial.error?.message,
+            carrito: carrito.error?.message,
+        });
+
+        redirect("/admin/usuarios?error=eliminacion");
+    }
+
+    const tieneRegistros =
+        (pedidos.count ?? 0) > 0 ||
+        (movimientos.count ?? 0) > 0 ||
+        (historial.count ?? 0) > 0 ||
+        (carrito.count ?? 0) > 0;
+
+    if (tieneRegistros) {
+        redirect("/admin/usuarios?error=con_historial");
+    }
+
+    // Eliminar la cuenta de Supabase Auth.
+    const { error: errorEliminar } = await admin.auth.admin.deleteUser(objetivo.id);
+
+    if (errorEliminar) {
+        console.error("Error al eliminar usuario:", errorEliminar.message);
+
+        redirect("/admin/usuarios?error=eliminacion");
+    }
+
+    revalidatePath("/admin");
+    revalidatePath("/admin/usuarios");
+    revalidatePath("/admin/empleados");
+
+    redirect("/admin/usuarios?eliminado=1");
+}

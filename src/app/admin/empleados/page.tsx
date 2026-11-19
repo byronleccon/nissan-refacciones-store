@@ -1,7 +1,8 @@
 import { exigirRol } from "@/lib/auth/exigir-rol";
 import { createAdminClient } from "@/lib/supabase/admin";
 import Link from "next/link";
-import { crearUsuario, desactivarUsuario, reactivarUsuario } from "../usuarios/acciones";
+import { crearUsuario } from "../usuarios/acciones";
+import MenuAccionesUsuario from "../usuarios/menu-acciones";
 
 type Empleado = {
     id: string;
@@ -28,11 +29,18 @@ export default async function EmpleadosPage({
     const admin = createAdminClient();
     const params = await searchParams;
 
-    const { data: sucursal } = await admin
-        .from("sucursales")
-        .select("id, nombre")
-        .eq("id", perfil.sucursal_id ?? "")
-        .maybeSingle();
+    const sucursalId = perfil.sucursal_id;
+
+    if (!sucursalId) {
+        return (
+            <main className="mx-auto max-w-4xl p-6">
+                <h1 className="text-2xl font-bold">Sucursal no asignada</h1>
+                <p className="mt-2 text-gray-600">Tu cuenta no tiene una sucursal asignada.</p>
+            </main>
+        );
+    }
+
+    const { data: sucursal } = await admin.from("sucursales").select("id, nombre").eq("id", sucursalId).maybeSingle();
 
     const estado = ["todos", "activos", "inactivos"].includes(params.estado ?? "") ? params.estado! : "todos";
 
@@ -40,7 +48,7 @@ export default async function EmpleadosPage({
         .from("perfiles")
         .select("id, nombre_completo, rol, sucursal_id, activo")
         .eq("rol", "empleado")
-        .eq("sucursal_id", perfil.sucursal_id ?? "")
+        .eq("sucursal_id", sucursalId)
         .order("nombre_completo");
 
     if (estado === "activos") {
@@ -266,85 +274,59 @@ export default async function EmpleadosPage({
                     </button>
                 </form>
 
-                <div className="overflow-x-auto">
-                    <table className="w-full min-w-[700px] border-collapse text-left text-sm">
-                        <thead>
-                            <tr className="border-b bg-gray-50">
-                                <th className="px-4 py-3 font-semibold">Empleado</th>
-                                <th className="px-4 py-3 font-semibold">Estado</th>
-                                <th className="px-4 py-3 font-semibold">Acciones</th>
-                            </tr>
-                        </thead>
+                <div className="w-full">
+                    <div className="overflow-x-auto">
+                        <table className="w-full min-w-[700px] border-collapse text-left text-sm">
+                            <thead>
+                                <tr className="border-b bg-gray-50">
+                                    <th className="px-4 py-3 font-semibold">Empleado</th>
+                                    <th className="px-4 py-3 font-semibold">Estado</th>
+                                    <th className="px-4 py-3 font-semibold">Acciones</th>
+                                </tr>
+                            </thead>
 
-                        <tbody>
-                            {empleados.map(empleado => (
-                                <tr key={empleado.id} className="border-b last:border-0">
-                                    <td className="px-4 py-4">
-                                        <p className="font-medium">{empleado.nombre_completo ?? "Sin nombre"}</p>
+                            <tbody>
+                                {empleados.map(empleado => (
+                                    <tr key={empleado.id} className="border-b last:border-0">
+                                        <td className="px-4 py-4">
+                                            <p className="font-medium">{empleado.nombre_completo ?? "Sin nombre"}</p>
 
-                                        <p className="mt-1 text-xs text-gray-500">{empleado.email}</p>
-                                    </td>
+                                            <p className="mt-1 text-xs text-gray-500">{empleado.email}</p>
+                                        </td>
 
-                                    <td className="px-4 py-4">
-                                        {empleado.activo ? (
-                                            <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800">
-                                                Activo
-                                            </span>
-                                        ) : (
-                                            <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-800">
-                                                Inactivo
-                                            </span>
-                                        )}
-                                    </td>
-
-                                    <td className="px-4 py-4">
-                                        <div className="flex flex-wrap gap-2">
+                                        <td className="px-4 py-4">
                                             {empleado.activo ? (
-                                                <>
-                                                    <Link
-                                                        href={`/admin/usuarios/${empleado.id}/editar`}
-                                                        className="rounded-lg border border-blue-300 px-3 py-2 text-xs font-medium text-blue-700 transition hover:bg-blue-50"
-                                                    >
-                                                        Editar
-                                                    </Link>
-
-                                                    <form action={desactivarUsuario}>
-                                                        <input type="hidden" name="usuario_id" value={empleado.id} />
-
-                                                        <button
-                                                            type="submit"
-                                                            className="rounded-lg border border-red-300 px-3 py-2 text-xs font-medium text-red-700 transition hover:bg-red-50"
-                                                        >
-                                                            Desactivar
-                                                        </button>
-                                                    </form>
-                                                </>
+                                                <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800">
+                                                    Activo
+                                                </span>
                                             ) : (
-                                                <form action={reactivarUsuario}>
-                                                    <input type="hidden" name="usuario_id" value={empleado.id} />
-
-                                                    <button
-                                                        type="submit"
-                                                        className="rounded-lg border border-green-300 px-3 py-2 text-xs font-medium text-green-700 transition hover:bg-green-50"
-                                                    >
-                                                        Reactivar
-                                                    </button>
-                                                </form>
+                                                <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-800">
+                                                    Inactivo
+                                                </span>
                                             )}
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
+                                        </td>
 
-                            {empleados.length === 0 && (
-                                <tr>
-                                    <td colSpan={3} className="px-4 py-8 text-center text-gray-500">
-                                        No hay empleados para este filtro.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
+                                        <td className="px-4 py-4">
+                                            <MenuAccionesUsuario
+                                                usuarioId={empleado.id}
+                                                activo={empleado.activo}
+                                                mostrarEliminar={true}
+                                                textoEditar="Editar empleado"
+                                            />
+                                        </td>
+                                    </tr>
+                                ))}
+
+                                {empleados.length === 0 && (
+                                    <tr>
+                                        <td colSpan={3} className="px-4 py-8 text-center text-gray-500">
+                                            No hay empleados para este filtro.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <p className="text-xs text-gray-500">Empleados encontrados: {empleados.length}</p>

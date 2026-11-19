@@ -2,7 +2,8 @@ import { exigirRol } from "@/lib/auth/exigir-rol";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
-import { crearUsuario, desactivarUsuario, reactivarUsuario } from "./acciones";
+import { crearUsuario } from "./acciones";
+import MenuAccionesUsuario from "./menu-acciones";
 
 type Sucursal = {
     id: string;
@@ -35,6 +36,7 @@ export default async function UsuariosPage({
         editado?: string;
         sucursal?: string;
         estado?: string;
+        eliminado?: string;
     }>;
 }) {
     const perfil = await exigirRol(["admin_general"]);
@@ -140,6 +142,9 @@ export default async function UsuariosPage({
         edicion: "No se pudo actualizar el perfil del usuario.",
         credenciales: "No se pudieron actualizar las credenciales del usuario.",
         lista: "No se pudo cargar la lista de usuarios.",
+        eliminacion: "No se pudo eliminar la cuenta.",
+        con_historial:
+            "No se puede eliminar esta cuenta porque tiene pedidos, movimientos u otros registros asociados.",
     };
 
     return (
@@ -177,6 +182,12 @@ export default async function UsuariosPage({
             {params.reactivado === "1" && (
                 <div className="rounded-lg border border-green-300 bg-green-50 p-4 text-green-800">
                     Usuario reactivado correctamente.
+                </div>
+            )}
+
+            {params.eliminado === "1" && (
+                <div className="rounded-lg border border-green-300 bg-green-50 p-4 text-green-800">
+                    La cuenta se eliminó correctamente.
                 </div>
             )}
 
@@ -365,98 +376,72 @@ export default async function UsuariosPage({
                 </form>
 
                 {/* TABLA */}
-                <div className="overflow-x-auto">
-                    <table className="w-full min-w-[850px] border-collapse text-left text-sm">
-                        <thead>
-                            <tr className="border-b bg-gray-50">
-                                <th className="px-4 py-3 font-semibold">Usuario</th>
-                                <th className="px-4 py-3 font-semibold">Rol</th>
-                                <th className="px-4 py-3 font-semibold">Sucursal</th>
-                                <th className="px-4 py-3 font-semibold">Estado</th>
-                                <th className="px-4 py-3 font-semibold">Acciones</th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            {usuarios.map(usuario => (
-                                <tr key={usuario.id} className="border-b last:border-0">
-                                    <td className="px-4 py-4">
-                                        <p className="font-medium">{usuario.nombre_completo ?? "Sin nombre"}</p>
-                                        <p className="mt-1 text-xs text-gray-500">{usuario.email}</p>
-                                    </td>
-
-                                    <td className="px-4 py-4">{nombresRoles[usuario.rol] ?? usuario.rol}</td>
-
-                                    <td className="px-4 py-4">
-                                        {usuario.sucursal_id
-                                            ? (nombresSucursales.get(usuario.sucursal_id) ?? "Sucursal no disponible")
-                                            : "Sin sucursal"}
-                                    </td>
-
-                                    <td className="px-4 py-4">
-                                        {usuario.activo ? (
-                                            <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800">
-                                                Activo
-                                            </span>
-                                        ) : (
-                                            <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-800">
-                                                Inactivo
-                                            </span>
-                                        )}
-                                    </td>
-
-                                    <td className="px-4 py-4">
-                                        {usuario.id === perfil.id ? (
-                                            <span className="text-xs text-gray-500">Tu cuenta</span>
-                                        ) : (
-                                            <div className="flex flex-wrap gap-2">
-                                                {usuario.activo && (
-                                                    <Link
-                                                        href={`/admin/usuarios/${usuario.id}/editar`}
-                                                        className="rounded-lg border border-blue-300 px-3 py-2 text-xs font-medium text-blue-700 transition hover:bg-blue-50"
-                                                    >
-                                                        Editar
-                                                    </Link>
-                                                )}
-
-                                                {usuario.activo ? (
-                                                    <form action={desactivarUsuario}>
-                                                        <input type="hidden" name="usuario_id" value={usuario.id} />
-
-                                                        <button
-                                                            type="submit"
-                                                            className="rounded-lg border border-red-300 px-3 py-2 text-xs font-medium text-red-700 transition hover:bg-red-50"
-                                                        >
-                                                            Desactivar
-                                                        </button>
-                                                    </form>
-                                                ) : (
-                                                    <form action={reactivarUsuario}>
-                                                        <input type="hidden" name="usuario_id" value={usuario.id} />
-
-                                                        <button
-                                                            type="submit"
-                                                            className="rounded-lg border border-green-300 px-3 py-2 text-xs font-medium text-green-700 transition hover:bg-green-50"
-                                                        >
-                                                            Reactivar
-                                                        </button>
-                                                    </form>
-                                                )}
-                                            </div>
-                                        )}
-                                    </td>
+                <div className="w-full">
+                    <div className="overflow-x-auto">
+                        <table className="w-full min-w-[850px] border-collapse text-left text-sm">
+                            <thead>
+                                <tr className="border-b bg-gray-50">
+                                    <th className="px-4 py-3 font-semibold">Usuario</th>
+                                    <th className="px-4 py-3 font-semibold">Rol</th>
+                                    <th className="px-4 py-3 font-semibold">Sucursal</th>
+                                    <th className="px-4 py-3 font-semibold">Estado</th>
+                                    <th className="px-4 py-3 font-semibold">Acciones</th>
                                 </tr>
-                            ))}
+                            </thead>
 
-                            {usuarios.length === 0 && (
-                                <tr>
-                                    <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
-                                        No se encontraron usuarios con esos filtros.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
+                            <tbody>
+                                {usuarios.map(usuario => (
+                                    <tr key={usuario.id} className="border-b last:border-0">
+                                        <td className="px-4 py-4">
+                                            <p className="font-medium">{usuario.nombre_completo ?? "Sin nombre"}</p>
+                                            <p className="mt-1 text-xs text-gray-500">{usuario.email}</p>
+                                        </td>
+
+                                        <td className="px-4 py-4">{nombresRoles[usuario.rol] ?? usuario.rol}</td>
+
+                                        <td className="px-4 py-4">
+                                            {usuario.sucursal_id
+                                                ? (nombresSucursales.get(usuario.sucursal_id) ??
+                                                  "Sucursal no disponible")
+                                                : "Sin sucursal"}
+                                        </td>
+
+                                        <td className="px-4 py-4">
+                                            {usuario.activo ? (
+                                                <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800">
+                                                    Activo
+                                                </span>
+                                            ) : (
+                                                <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-800">
+                                                    Inactivo
+                                                </span>
+                                            )}
+                                        </td>
+
+                                        <td className="relative px-4 py-4">
+                                            {usuario.id === perfil.id ? (
+                                                <span className="text-xs text-gray-500">Tu cuenta</span>
+                                            ) : (
+                                                <MenuAccionesUsuario
+                                                    usuarioId={usuario.id}
+                                                    activo={usuario.activo}
+                                                    mostrarEliminar={true}
+                                                />
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+
+                                {usuarios.length === 0 && (
+                                    <tr>
+                                        <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                                            No se encontraron usuarios con esos filtros.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <p className="text-xs text-gray-500">Usuarios encontrados: {usuarios.length}</p>

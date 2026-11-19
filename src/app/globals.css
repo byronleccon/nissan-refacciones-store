@@ -123,10 +123,32 @@
     * {
         @apply border-border outline-ring/50;
     }
+
     body {
         @apply bg-background text-foreground;
     }
+
     html {
         @apply font-sans;
     }
+}
+
+/* Corrección de visibilidad del menú de acciones de usuarios */
+.menu-acciones-usuario,
+.menu-acciones-usuario a,
+.menu-acciones-usuario button {
+    color: #111827 !important;
+}
+
+.menu-acciones-usuario {
+    background-color: #ffffff !important;
+}
+
+.menu-acciones-usuario a,
+.menu-acciones-usuario button {
+    background-color: #ffffff !important;
+}
+
+.menu-acciones-usuario .eliminar-usuario {
+    color: #dc2626 !important;
 }
