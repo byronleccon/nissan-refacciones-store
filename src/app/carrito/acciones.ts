@@ -6,6 +6,12 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+// Estado que devuelve el formulario de agregar al carrito.
+type EstadoAgregar = {
+    estado: "idle" | "success" | "error";
+    mensaje: string;
+};
+
 // Validación para agregar productos.
 const esquemaAgregar = z.object({
     producto_id: z.string().uuid(),
@@ -24,14 +30,19 @@ const esquemaConfirmar = z.object({
     fecha_recogida: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 });
 
-// Agregar un producto al carrito.
-export async function agregarAlCarrito(formData: FormData) {
+// Agregar un producto al carrito sin abandonar la página.
+export async function agregarAlCarrito(_estado: EstadoAgregar, formData: FormData): Promise<EstadoAgregar> {
     const v = esquemaAgregar.safeParse({
         producto_id: formData.get("producto_id"),
         cantidad: formData.get("cantidad"),
     });
 
-    if (!v.success) return;
+    if (!v.success) {
+        return {
+            estado: "error",
+            mensaje: "Verifica la cantidad seleccionada.",
+        };
+    }
 
     const supabase = await createClient();
 
@@ -41,16 +52,23 @@ export async function agregarAlCarrito(formData: FormData) {
 
     if (!user) redirect("/login");
 
-    const { data: existente } = await supabase
+    const { data: existente, error: errorConsulta } = await supabase
         .from("carrito_items")
         .select("cantidad")
         .eq("usuario_id", user.id)
         .eq("producto_id", v.data.producto_id)
         .maybeSingle();
 
+    if (errorConsulta) {
+        return {
+            estado: "error",
+            mensaje: "No se pudo consultar tu carrito. Intenta nuevamente.",
+        };
+    }
+
     const nueva = Math.min(99, (existente?.cantidad ?? 0) + v.data.cantidad);
 
-    await supabase.from("carrito_items").upsert(
+    const { error } = await supabase.from("carrito_items").upsert(
         {
             usuario_id: user.id,
             producto_id: v.data.producto_id,
@@ -60,8 +78,20 @@ export async function agregarAlCarrito(formData: FormData) {
         { onConflict: "usuario_id,producto_id" },
     );
 
+    if (error) {
+        return {
+            estado: "error",
+            mensaje: "No se pudo agregar el producto. Intenta nuevamente.",
+        };
+    }
+
+    // Actualizar el contador del carrito.
     revalidatePath("/", "layout");
-    redirect("/carrito");
+
+    return {
+        estado: "success",
+        mensaje: "¡Producto agregado al carrito correctamente!",
+    };
 }
 
 // Cambiar la cantidad de un producto.
@@ -95,6 +125,7 @@ export async function cambiarCantidad(formData: FormData) {
     }
 
     revalidatePath("/", "layout");
+    revalidatePath("/carrito");
 }
 
 // Eliminar un producto del carrito.
@@ -114,6 +145,7 @@ export async function quitarDelCarrito(formData: FormData) {
     await supabase.from("carrito_items").delete().eq("usuario_id", user.id).eq("producto_id", id.data);
 
     revalidatePath("/", "layout");
+    revalidatePath("/carrito");
 }
 
 // Seleccionar una sucursal que tenga todo el carrito disponible.
