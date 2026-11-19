@@ -82,6 +82,7 @@ export async function registrarse(datos: DatosRegistro): Promise<ResultadoAccion
 }
 
 // Enviar correo de recuperación.
+
 export async function enviarRecuperacion(correo: string): Promise<ResultadoAccion> {
     const validado = esquemaRecuperacion.safeParse({ correo });
 
@@ -92,7 +93,7 @@ export async function enviarRecuperacion(correo: string): Promise<ResultadoAccio
     const supabase = await createClient();
 
     const { error } = await supabase.auth.resetPasswordForEmail(validado.data.correo.trim().toLowerCase(), {
-        redirectTo: `${obtenerUrlSitio()}/auth/callback?next=/restablecer-contrasena`,
+        redirectTo: `${obtenerUrlSitio()}/auth/confirm?next=/restablecer-contrasena`,
     });
 
     if (error) {
@@ -105,7 +106,7 @@ export async function enviarRecuperacion(correo: string): Promise<ResultadoAccio
 
     return {
         mensaje:
-            "Si existe una cuenta asociada a ese correo, recibirás un enlace para restablecer tu contraseña. Revisa también la carpeta de correo no deseado.",
+            "Si existe una cuenta asociada a ese correo, recibirás un enlace para restablecer tu contraseña. Revisa también el correo no deseado.",
     };
 }
 
