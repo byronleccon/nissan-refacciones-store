@@ -1,5 +1,6 @@
 "use server";
 
+import { enviarCorreo } from "@/lib/email";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -129,7 +130,6 @@ export async function seleccionarSucursal(formData: FormData) {
 
     if (!user) redirect("/login");
 
-    // Comprobar nuevamente la disponibilidad.
     const { data, error } = await supabase.rpc("consultar_disponibilidad_carrito");
 
     if (error) {
@@ -148,7 +148,7 @@ export async function seleccionarSucursal(formData: FormData) {
     redirect(`/carrito?sucursal=${id.data}`);
 }
 
-// Confirmar el pedido y reservar el inventario.
+// Confirmar el pedido y enviar correo al cliente.
 export async function confirmarPedido(formData: FormData) {
     const validacion = esquemaConfirmar.safeParse({
         sucursal_id: formData.get("sucursal_id"),
@@ -174,6 +174,105 @@ export async function confirmarPedido(formData: FormData) {
 
     if (error || !pedidoId) {
         redirect(`/carrito/confirmar?sucursal=${validacion.data.sucursal_id}&error=pedido`);
+    }
+
+    // El pedido ya fue creado. Los errores de correo no lo cancelan.
+    try {
+        if (!user.email) {
+            throw new Error("El cliente no tiene correo registrado.");
+        }
+
+        const { data: pedido, error: errorPedido } = await supabase
+            .from("pedidos")
+            .select("id, folio, total, fecha_recogida, sucursal_id")
+            .eq("id", pedidoId)
+            .eq("cliente_id", user.id)
+            .single();
+
+        if (errorPedido || !pedido) {
+            throw new Error("No se pudieron consultar los datos del pedido.");
+        }
+
+        const [{ data: detalles, error: errorDetalles }, { data: sucursal, error: errorSucursal }] = await Promise.all([
+            supabase.from("detalle_pedido").select("sku, nombre, precio_unitario, cantidad").eq("pedido_id", pedidoId),
+
+            supabase.from("sucursales").select("nombre, direccion").eq("id", pedido.sucursal_id).single(),
+        ]);
+
+        if (errorDetalles || !detalles || errorSucursal || !sucursal) {
+            throw new Error("No se pudieron consultar los detalles del pedido.");
+        }
+
+        const formatoPrecio = (cantidad: number) =>
+            new Intl.NumberFormat("es-MX", {
+                style: "currency",
+                currency: "MXN",
+            }).format(cantidad);
+
+        const filasProductos = detalles
+            .map(
+                producto => `
+            <tr>
+                <td style="padding:10px;border-bottom:1px solid #eee;">
+                    ${producto.nombre} (${producto.sku})
+                </td>
+                <td style="padding:10px;text-align:center;border-bottom:1px solid #eee;">
+                    ${producto.cantidad}
+                </td>
+                <td style="padding:10px;text-align:right;border-bottom:1px solid #eee;">
+                    ${formatoPrecio(Number(producto.precio_unitario))}
+                </td>
+            </tr>
+        `,
+            )
+            .join("");
+
+        const fecha = new Date(`${pedido.fecha_recogida}T12:00:00`).toLocaleDateString("es-MX", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+        });
+
+        await enviarCorreo({
+            destinatario: user.email,
+            asunto: `Confirmación de pedido ${pedido.folio} - Tsuru ProParts`,
+            html: `
+                <div style="font-family:Arial,sans-serif;max-width:650px;margin:auto;color:#222;">
+                    <h1 style="color:#222;">Tsuru ProParts</h1>
+                    <h2>¡Tu pedido ha sido confirmado!</h2>
+
+                    <p>Hemos registrado correctamente tu pedido.</p>
+
+                    <p><strong>Folio:</strong> ${pedido.folio}</p>
+                    <p><strong>Sucursal:</strong> ${sucursal.nombre}</p>
+                    <p><strong>Dirección:</strong> ${sucursal.direccion}</p>
+                    <p><strong>Fecha de recogida:</strong> ${fecha}</p>
+
+                    <h3>Productos de tu pedido</h3>
+
+                    <table style="width:100%;border-collapse:collapse;">
+                        <thead>
+                            <tr>
+                                <th style="text-align:left;padding:10px;">Producto</th>
+                                <th style="padding:10px;">Cantidad</th>
+                                <th style="text-align:right;padding:10px;">Precio</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${filasProductos}
+                        </tbody>
+                    </table>
+
+                    <h2 style="text-align:right;">
+                        Total: ${formatoPrecio(Number(pedido.total))}
+                    </h2>
+
+                    <p>Gracias por comprar en Tsuru ProParts.</p>
+                </div>
+            `,
+        });
+    } catch (errorCorreo) {
+        console.error("El pedido se creó, pero no se pudo enviar el correo:", errorCorreo);
     }
 
     revalidatePath("/carrito");

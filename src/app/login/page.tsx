@@ -7,12 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { esquemaLogin, type DatosLogin } from "@/lib/validaciones/auth";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 
 export default function LoginPage() {
     const [errorServidor, setErrorServidor] = useState<string | null>(null);
+    const [mostrarContrasena, setMostrarContrasena] = useState(false);
 
     const {
         register,
@@ -50,12 +52,26 @@ export default function LoginPage() {
 
                         <div className="space-y-2">
                             <Label htmlFor="contrasena">Contraseña</Label>
-                            <Input
-                                id="contrasena"
-                                type="password"
-                                autoComplete="current-password"
-                                {...register("contrasena")}
-                            />
+
+                            <div className="relative">
+                                <Input
+                                    id="contrasena"
+                                    type={mostrarContrasena ? "text" : "password"}
+                                    autoComplete="current-password"
+                                    className="pr-12"
+                                    {...register("contrasena")}
+                                />
+
+                                <button
+                                    type="button"
+                                    onClick={() => setMostrarContrasena(!mostrarContrasena)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                    aria-label={mostrarContrasena ? "Ocultar contraseña" : "Mostrar contraseña"}
+                                >
+                                    {mostrarContrasena ? <EyeOff size={20} /> : <Eye size={20} />}
+                                </button>
+                            </div>
+
                             {errors.contrasena && <p className="text-sm text-red-600">{errors.contrasena.message}</p>}
                         </div>
 
