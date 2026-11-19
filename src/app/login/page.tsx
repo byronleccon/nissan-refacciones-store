@@ -13,16 +13,23 @@ import { useForm } from "react-hook-form";
 
 export default function LoginPage() {
     const [errorServidor, setErrorServidor] = useState<string | null>(null);
+
     const {
         register,
         handleSubmit,
         formState: { errors, isSubmitting },
-    } = useForm<DatosLogin>({ resolver: zodResolver(esquemaLogin) });
+    } = useForm<DatosLogin>({
+        resolver: zodResolver(esquemaLogin),
+    });
 
     async function alEnviar(datos: DatosLogin) {
         setErrorServidor(null);
+
         const resultado = await iniciarSesion(datos);
-        if (resultado?.error) setErrorServidor(resultado.error);
+
+        if (resultado && "error" in resultado) {
+            setErrorServidor(resultado.error);
+        }
     }
 
     return (
@@ -32,6 +39,7 @@ export default function LoginPage() {
                     <CardTitle>Iniciar sesión</CardTitle>
                     <CardDescription>Entra para hacer y consultar tus pedidos.</CardDescription>
                 </CardHeader>
+
                 <CardContent>
                     <form onSubmit={handleSubmit(alEnviar)} className="space-y-4">
                         <div className="space-y-2">
@@ -52,11 +60,13 @@ export default function LoginPage() {
                         </div>
 
                         {errorServidor && <p className="text-sm text-red-600">{errorServidor}</p>}
+
                         <p className="text-right text-sm">
                             <Link href="/recuperar-contrasena" className="underline">
                                 ¿Has olvidado tu contraseña?
                             </Link>
                         </p>
+
                         <Button type="submit" className="w-full" disabled={isSubmitting}>
                             {isSubmitting ? "Entrando..." : "Entrar"}
                         </Button>
